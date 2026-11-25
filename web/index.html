@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Video → VRM Studio (Zero-ML Polar-Loft Hybrid)</title>
+<style>
+  :root {
+    --bg: #0c101b; --panel: #121827; --card: #182034; --border: #26314d;
+    --text: #e6ecf7; --muted: #93a1be; --accent: #5b8cff; --accent2: #22d3ee;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+    font-size: 13px; overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 374px 1fr; height: 100vh; width: 100vw; }
+  .sidebar { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 14px; gap: 11px; }
+  .header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .title-wrap h1 { margin: 0; font-size: 15px; font-weight: 700; }
+  .badge { display: inline-block; margin-top: 4px; padding: 2px 7px; border-radius: 999px; background: rgba(34, 211, 238, 0.14); color: var(--accent2); font-size: 10px; font-weight: 600; border: 1px solid rgba(34, 211, 238, 0.35); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 11px; display: flex; flex-direction: column; gap: 8px; }
+  .card-title { font-size: 12px; font-weight: 700; color: #c9d6f0; text-transform: uppercase; letter-spacing: 0.4px; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  input[type="text"] { background: #1e2942; color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 7px 8px; font-size: 12px; box-sizing: border-box; margin-bottom: 8px; }
+  button, select { background: #1e2942; color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 7px 8px; font-size: 12px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+  button:hover:not(:disabled) { background: #273556; border-color: #3d5284; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: linear-gradient(135deg, #4b7cf5, #2563eb); border-color: #60a5fa; font-weight: 600; }
+  button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  button.active { background: #26407a; border-color: var(--accent); color: #fff; }
+  label.small { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; width: 100%; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
+  .dropzone { border: 1px dashed #3b4b75; border-radius: 8px; padding: 9px; text-align: center; color: var(--muted); font-size: 11px; cursor: pointer; background: rgba(12, 16, 27, 0.45); }
+  .dropzone.drag { border-color: var(--accent2); color: var(--accent2); background: rgba(34, 211, 238, 0.08); }
+  .prog-bar { width: 100%; height: 7px; background: #0c101b; border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+  .prog-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.15s; }
+  .status-txt { font-size: 11px; color: var(--muted); min-height: 15px; }
+  .uv-box { width: 100%; aspect-ratio: 1; background: #0b0e17; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .uv-box canvas { width: 100%; height: 100%; object-fit: contain; }
+  .expr-list { display: flex; flex-direction: column; gap: 5px; max-height: 175px; overflow-y: auto; padding-right: 4px; }
+  .expr-item { display: grid; grid-template-columns: 78px 1fr 34px; align-items: center; gap: 6px; font-size: 11px; }
+  .viewport { position: relative; width: 100%; height: 100%; background: radial-gradient(circle at 50% 35%, #192238 0%, #0b0f1b 75%); }
+  #glCanvas { width: 100%; height: 100%; display: block; cursor: grab; }
+  #glCanvas:active { cursor: grabbing; }
+  .hud { position: absolute; top: 12px; left: 12px; right: 12px; pointer-events: none; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .hud-pill { pointer-events: auto; background: rgba(12, 16, 27, 0.78); backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 9px; padding: 7px 11px; font-size: 11px; color: #cbd5e1; }
+  .cam-bar { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; background: rgba(12, 16, 27, 0.84); backdrop-filter: blur(8px); padding: 6px 8px; border-radius: 10px; border: 1px solid var(--border); }
+  .mesh-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip { padding: 3px 8px; border-radius: 999px; font-size: 11px; cursor: pointer; border: 1px solid var(--border); background: #121a2d; color: var(--muted); }
+  .chip.on { background: rgba(91, 140, 255, 0.22); border-color: var(--accent); color: #eaf1ff; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="header">
+      <div class="title-wrap">
+        <h1 data-i18n="appTitle">Video → VRM Studio</h1>
+        <span class="badge" data-i18n="appBadge">骨格ロック・極座標ロフト / Zero-ML</span>
+      </div>
+      <button id="langBtn" title="Switch Language">EN</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title" data-i18n="secInput">1. 入力動画 & キャリブレーション</div>
+      <div class="grid2">
+        <button id="btnSampleUniform" data-i18n="sampleUniform">制服サンプル</button>
+        <button id="btnSampleIdol" data-i18n="sampleIdol">アイドル</button>
+      </div>
+      <div id="dropZone" class="dropzone" data-i18n="dropHint">ここに 10秒ターンテーブル MP4 をドロップ / クリックして選択</div>
+      <input id="fileInput" type="file" accept="video/mp4,video/*" hidden />
+      <div class="grid2">
+        <div>
+          <label class="small"><span data-i18n="poseModeLbl">ポーズ判定</span></label>
+          <select id="poseModeSel" style="width:100%;">
+            <option value="auto" data-i18n="optAuto">自動 (T / A-pose)</option>
+            <option value="tpose">T-pose</option>
+            <option value="apose">A-pose</option>
+          </select>
+        </div>
+        <div>
+          <label class="small"><span data-i18n="keyThLbl">クロマキー閾値</span><span id="keyThVal">24</span></label>
+          <input id="keyThRange" type="range" min="10" max="48" value="24" />
+        </div>
+      </div>
+      <button id="btnBuild" class="primary" disabled data-i18n="btnBuild">VRMモデルを生成</button>
+      <div class="prog-bar"><div id="progFill" class="prog-fill"></div></div>
+      <div id="statusTxt" class="status-txt" data-i18n="statusIdle">動画を選択して生成を開始してください</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" data-i18n="secPose">2. ポーズ / モーション</div>
+      <div class="grid2">
+        <button class="pose-btn active" data-pose="tpose">T-Pose</button>
+        <button class="pose-btn" data-pose="idle" data-i18n="poseIdle">Idle (自然立ち)</button>
+        <button class="pose-btn" data-pose="wave" data-i18n="poseWave">手振り (Wave)</button>
+        <button class="pose-btn" data-pose="vrma" data-i18n="poseDemoVrma">デモ動作</button>
+      </div>
+      <div class="row">
+        <button id="btnPlayPause" style="width:100%;" data-i18n="pauseBtn">アニメーション一時停止</button>
+      </div>
+      <label class="small"><span data-i18n="meshVisLbl">メッシュ表示 (4パーツ)</span></label>
+      <div class="mesh-chips" id="meshChips">
+        <span class="chip on" data-mesh="body">Body</span>
+        <span class="chip on" data-mesh="head">Head</span>
+        <span class="chip on" data-mesh="torso">Torso</span>
+        <span class="chip on" data-mesh="hair">Hair</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" data-i18n="secExpr">3. 表情モーフ (13種)</div>
+      <div id="exprList" class="expr-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" data-i18n="secExport">4. VRMエクスポート & UVアトラス</div>
+      <div class="grid2">
+        <select id="shaderSel">
+          <option value="mtoon">MToon 1.0 / 0.x</option>
+          <option value="unlit">Unlit Texture</option>
+        </select>
+        <select id="atlasSel">
+          <option value="torso">Torso UV (1024²)</option>
+          <option value="head">Head UV (1024²)</option>
+          <option value="body">Body UV (1024²)</option>
+          <option value="hair">Hair UV (1024²)</option>
+        </select>
+      </div>
+      <label class="small"><span data-i18n="authorLbl">作者名（VRM に書き込む名前）</span></label>
+      <input id="authorInput" type="text" maxlength="64" placeholder="Unknown" style="width:100%;" />
+      <div class="uv-box"><canvas id="uvCanvas" width="256" height="256"></canvas></div>
+      <div class="grid3">
+        <button id="btnExpV1" class="primary" disabled>.VRM 1.0</button>
+        <button id="btnExpV0" disabled>.VRM 0.x</button>
+        <button id="btnExpPng" disabled>UV .PNG</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="viewport">
+    <canvas id="glCanvas"></canvas>
+    <div class="hud">
+      <div class="hud-pill" id="statsHud">Video → VRM Studio — Ready</div>
+      <div class="hud-pill" id="camHud" data-i18n="camHint">ドラッグ: 回転 / ホイール: ズーム / 右ドラッグ: 平行移動</div>
+    </div>
+    <div class="cam-bar">
+      <button class="cam-preset" data-cam="front" data-i18n="camFront">正面</button>
+      <button class="cam-preset" data-cam="threeq" data-i18n="camThreeQ">斜め前</button>
+      <button class="cam-preset" data-cam="rear" data-i18n="camRear">背面3/4</button>
+      <button class="cam-preset" data-cam="neck" data-i18n="camNeck">首・襟確認</button>
+      <button class="cam-preset" data-cam="hand" data-i18n="camHand">手・手首</button>
+    </div>
+  </main>
+</div>
+
+<video id="srcVideo" muted playsinline preload="auto" style="position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.001;pointer-events:none;"></video>
+
+<script>
+(() => {
+"use strict";
+
+// ---------------------------------------------------------------------------
+// 0. Constants & i18n
+// ---------------------------------------------------------------------------
+const IMG_SZ = 720, N_VIEWS = 40, WORLD_H = 1.58, COARSE_GRID = [56, 82, 44], SUBDIV = 2, TEX_SZ = 1024;
+const BONES = [
+  "hips", "spine", "chest", "neck", "head", "leftEye", "rightEye",
+  "rightShoulder", "rightUpperArm", "rightLowerArm", "rightHand",
+  "leftShoulder", "leftUpperArm", "leftLowerArm", "leftHand",
+  "rightUpperLeg", "rightLowerLeg", "rightFoot", "rightToes",
+  "leftUpperLeg", "leftLowerLeg", "leftFoot", "leftToes",
+];
+const PARENT = {
+  hips: null, spine: "hips", chest: "spine", neck: "chest", head: "neck", leftEye: "head", rightEye: "head",
+  rightShoulder: "chest", rightUpperArm: "rightShoulder", rightLowerArm: "rightUpperArm", rightHand: "rightLowerArm",
+  leftShoulder: "chest", leftUpperArm: "leftShoulder", leftLowerArm: "leftUpperArm", leftHand: "leftLowerArm",
+  rightUpperLeg: "hips", rightLowerLeg: "rightUpperLeg", rightFoot: "rightLowerLeg", rightToes: "rightFoot",
+  leftUpperLeg: "hips", leftLowerLeg: "leftUpperLeg", leftFoot: "leftLowerLeg", leftToes: "leftFoot",
+};
+const BONE_IDX = Object.fromEntries(BONES.map((b, i) => [b, i]));
+const EXPR_NAMES = ["aa", "ih", "ou", "ee", "oh", "blink", "blinkLeft", "blinkRight", "happy", "angry", "sad", "relaxed", "surprised"];
+const VRM0_EXPR_MAP = { aa:"a", ih:"i", ou:"u", ee:"e", oh:"o", blink:"blink", blinkLeft:"blink_l", blinkRight:"blink_r", happy:"joy", angry:"angry", sad:"sorrow", relaxed:"fun", surprised:"unknown" };
+
+const I18N = {
+  ja: {
+    appTitle: "Video → VRM Studio", appBadge: "骨格ロック・極座標ロフト / Zero-ML",
+    secInput: "1. 入力動画 & キャリブレーション", sampleUniform: "制服サンプル", sampleIdol: "アイドル",
+    dropHint: "ここに 10秒ターンテーブル MP4 をドロップ / クリックして選択", poseModeLbl: "ポーズ判定", optAuto: "自動 (T / A-pose)",
+    keyThLbl: "クロマキー閾値", btnBuild: "VRMモデルを生成", statusIdle: "動画を選択して生成を開始してください",
+    secPose: "2. ポーズ / モーション", poseIdle: "Idle (自然立ち)", poseWave: "手振り (Wave)", poseDemoVrma: "デモ動作",
+    pauseBtn: "アニメーション一時停止", playBtn: "アニメーション再生", meshVisLbl: "メッシュ表示 (4パーツ)",
+    secExpr: "3. 表情モーフ (13種)", secExport: "4. VRMエクスポート & UVアトラス",
+    camHint: "ドラッグ: 回転 / ホイール: ズーム / 右ドラッグ: 平行移動",
+    authorLbl: "作者名（VRM に書き込む名前）", camFront: "正面", camThreeQ: "斜め前", camRear: "背面3/4", camNeck: "首・襟確認", camHand: "手・手首",
+  },
+  en: {
+    appTitle: "Video → VRM Studio", appBadge: "Anatomical-Lock Polar-Loft / Zero-ML",
+    secInput: "1. Input Video & Calibration", sampleUniform: "School Uniform", sampleIdol: "Idol Dress",
+    dropHint: "Drop 10s turntable MP4 here or click to browse", poseModeLbl: "Pose Mode", optAuto: "Auto (T / A-pose)",
+    keyThLbl: "Chroma Key Threshold", btnBuild: "Generate VRM", statusIdle: "Select or drop a video to start",
+    secPose: "2. Pose / Motion", poseIdle: "Idle Pose", poseWave: "Wave Motion", poseDemoVrma: "Demo Motion",
+    pauseBtn: "Pause Animation", playBtn: "Play Animation", meshVisLbl: "Meshes (4 Parts)",
+    secExpr: "3. Facial Morphs (13 Presets)", secExport: "4. Export VRM & UV Atlases",
+    camHint: "Drag: Orbit / Wheel: Zoom / Right-drag: Pan",
+    authorLbl: "Author (written into the VRM)", camFront: "Front", camThreeQ: "Front 3/4", camRear: "Rear 3/4", camNeck: "Neck & Collar", camHand: "Hand & Wrist",
+  }
+};
+let curLang = "ja";
+function currentAuthor() { const v = ($("authorInput")?.value || "").trim(); return v || "Unknown"; }
+const $ = (id) => typeof document !== "undefined" ? document.getElementById(id) : null;
+function applyI18n() {
+  if (typeof document === "undefined") return;
+  const dict = I18N[curLang];
+  document.querySelectorAll("[data-i18n]").forEach((el) => { const k = el.getAttribute("data-i18n"); if (dict[k]) el.textContent = dict[k]; });
+  const lb = $("langBtn"); if (lb) lb.textContent = curLang === "ja" ? "EN" : "JA";
+}
+
+// ---------------------------------------------------------------------------
+// 1. Math & Pure-JS PNG Helpers
+// ---------------------------------------------------------------------------
+const clip = (x, lo, hi) => x < lo ? lo : (x > hi ? hi : x);
+const lerp = (a, b, t) => a + (b - a) * t;
+function interp1D(x, xp, fp, leftVal, rightVal) {
+  const n = xp.length;
+  if (x <= xp[0]) return leftVal !== undefined ? leftVal : fp[0];
+  if (x >= xp[n - 1]) return rightVal !== undefined ? rightVal : fp[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (xp[m] <= x) lo = m; else hi = m; }
+  const den = xp[hi] - xp[lo];
+  return fp[lo] + (den > 1e-12 ? (x - xp[lo]) / den : 0) * (fp[hi] - fp[lo]);
+}
+function percentile(arr, q) {
+  if (!arr.length) return 0;
+  const s = Float32Array.from(arr).sort((a, b) => a - b);
+  const idx = (q / 100) * (s.length - 1), lo = Math.floor(idx), hi = Math.min(s.length - 1, lo + 1);
+  return s[lo] + (idx - lo) * (s[hi] - s[lo]);
+}
+const median = (arr) => percentile(arr, 50);
+function linspace(a, b, n, endpoint = true) {
+  const out = new Float32Array(n), div = endpoint ? Math.max(1, n - 1) : Math.max(1, n);
+  for (let i = 0; i < n; i++) out[i] = a + (b - a) * (i / div);
+  return out;
+}
+
+const _crcTable = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
+  return t;
+})();
+const _crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = _crcTable[(c ^ b[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+const _adler32 = (b) => { let s1 = 1, s2 = 0; for (let i = 0; i < b.length; i++) { s1 = (s1 + b[i]) % 65521; s2 = (s2 + s1) % 65521; } return ((s2 << 16) | s1) >>> 0; };
+function _pngChunk(t, d) {
+  const c = new Uint8Array(12 + d.length), dv = new DataView(c.buffer);
+  dv.setUint32(0, d.length, false); for (let i = 0; i < 4; i++) c[4 + i] = t.charCodeAt(i);
+  c.set(d, 8); dv.setUint32(8 + d.length, _crc32(c.subarray(4, 8 + d.length)), false); return c;
+}
+function encodeRgbToPngBytes(rgb, w, h) {
+  if (typeof document !== "undefined") {
+    const cvs = document.createElement("canvas"); cvs.width = w; cvs.height = h;
+    const ctx = cvs.getContext("2d");
+    if (ctx) {
+      const id = ctx.createImageData(w, h);
+      for (let i = 0, j = 0; i < w * h; i++, j += 3) { id.data[i*4]=rgb[j]; id.data[i*4+1]=rgb[j+1]; id.data[i*4+2]=rgb[j+2]; id.data[i*4+3]=255; }
+      ctx.putImageData(id, 0, 0);
+      const bin = atob(cvs.toDataURL("image/png").split(",")[1]), out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+  }
+  const stride = 1 + w * 3, raw = new Uint8Array(h * stride);
+  for (let y = 0; y < h; y++) { raw[y * stride] = 0; raw.set(rgb.subarray(y * w * 3, (y + 1) * w * 3), y * stride + 1); }
+  const maxB = 65535, nB = Math.ceil(raw.length / maxB), z = new Uint8Array(2 + raw.length + nB * 5 + 4);
+  z[0] = 0x78; z[1] = 0x01; let pos = 2, off = 0;
+  for (let b = 0; b < nB; b++) {
+    const bl = Math.min(maxB, raw.length - off), nl = (~bl) & 0xffff;
+    z[pos++] = (b === nB - 1) ? 1 : 0; z[pos++] = bl & 0xff; z[pos++] = (bl >>> 8) & 0xff; z[pos++] = nl & 0xff; z[pos++] = (nl >>> 8) & 0xff;
+    z.set(raw.subarray(off, off + bl), pos); pos += bl; off += bl;
+  }
+  new DataView(z.buffer).setUint32(pos, _adler32(raw), false);
+  const ih = new Uint8Array(13), idv = new DataView(ih.buffer); idv.setUint32(0, w, false); idv.setUint32(4, h, false); ih[8] = 8; ih[9] = 2;
+  const parts = [new Uint8Array([137,80,78,71,13,10,26,10]), _pngChunk("IHDR", ih), _pngChunk("IDAT", z), _pngChunk("IEND", new Uint8Array(0))];
+  const out = new Uint8Array(parts.reduce((a, p) => a + p.length, 0)); let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// 2. Chroma Keying, Calibration, & Anatomical Landmark / Skin Fitting
+// ---------------------------------------------------------------------------
+function erode2dSingle(mask, W, H, k) {
+  let cur = mask;
+  for (let p = 0; p < k; p++) {
+    const nxt = new Uint8Array(W * H);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      if (cur[i] && cur[i-1] && cur[i+1] && cur[i-W] && cur[i+W] && cur[i-W-1] && cur[i-W+1] && cur[i+W-1] && cur[i+W+1]) nxt[i] = 1;
+    }
+    cur = nxt;
+  }
+  return cur;
+}
+function dilate2dSingle(mask, W, H, r) {
+  if (r <= 0) return mask;
+  const hx = new Uint8Array(W * H), out = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    for (let xx = Math.max(0, x - r); xx <= Math.min(W - 1, x + r); xx++) if (mask[y * W + xx]) { hx[y * W + x] = 1; break; }
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    for (let yy = Math.max(0, y - r); yy <= Math.min(H - 1, y + r); yy++) if (hx[yy * W + x]) { out[y * W + x] = 1; break; }
+  }
+  return out;
+}
+
+function chromaKeyAndDespill(frames, keyTh = 24.0) {
+  const V = frames.length, H = IMG_SZ, W = IMG_SZ, N = W * H, yFloor = Math.floor(H * 0.90);
+  const fgAll = new Array(V), fgColorAll = new Array(V), cleanAll = new Array(V);
+  for (let k = 0; k < V; k++) {
+    const src = frames[k], rawFg = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      const r = src[i*3], g = src[i*3+1], b = src[i*3+2], rb = r > b ? r : b, gdom = g - rb;
+      let bg = (g > 105 && gdom > keyTh) || (g > 68 && gdom > keyTh + 18);
+      if (!bg && ((i / W) | 0) >= yFloor && g > rb + 7 && g > 34) bg = true;
+      rawFg[i] = bg ? 0 : 1;
+    }
+    const fg = new Uint8Array(N);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x, s = rawFg[i-W-1]+rawFg[i-W]+rawFg[i-W+1]+rawFg[i-1]+rawFg[i+1]+rawFg[i+W-1]+rawFg[i+W]+rawFg[i+W+1];
+      fg[i] = (rawFg[i] && s >= 3) || (!rawFg[i] && s >= 7) ? 1 : 0;
+    }
+    const fgColor = erode2dSingle(fg, W, H, 2), fgInner = erode2dSingle(fg, W, H, 4);
+    let clean = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const r = src[i*3], g = src[i*3+1], b = src[i*3+2], rb = r > b ? r : b;
+      clean[i*3] = r; clean[i*3+1] = (fg[i] && !fgInner[i] && g > rb + 2) ? rb + 2 : g; clean[i*3+2] = b;
+    }
+    let filled = Uint8Array.from(fgColor);
+    for (let pass = 0; pass < 3; pass++) {
+      const nFill = Uint8Array.from(filled), nClean = Float32Array.from(clean);
+      for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+        const i = y * W + x; if (filled[i]) continue;
+        let sr = 0, sg = 0, sb = 0, cnt = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dy || dx) {
+          const j = (y + dy) * W + (x + dx);
+          if (filled[j]) { sr += clean[j*3]; sg += clean[j*3+1]; sb += clean[j*3+2]; cnt++; }
+        }
+        if (cnt > 0) { nClean[i*3] = sr/cnt; nClean[i*3+1] = sg/cnt; nClean[i*3+2] = sb/cnt; nFill[i] = 1; }
+      }
+      filled = nFill; clean = nClean;
+    }
+    const cu8 = new Uint8Array(N * 3);
+    for (let i = 0; i < N * 3; i++) cu8[i] = clip(Math.round(clean[i]), 0, 255);
+    fgAll[k] = fg; fgColorAll[k] = fgColor; cleanAll[k] = cu8;
+  }
+  return { fg: fgAll, fgColor: fgColorAll, cleanRgb: cleanAll };
+}
+
+function getRowRuns(mask, y, W) {
+  const row = y * W, runs = []; let inR = false, s = 0;
+  for (let x = 0; x < W; x++) {
+    if (mask[row + x] && !inR) { inR = true; s = x; }
+    else if (!mask[row + x] && inR) { inR = false; runs.push([s, x - 1]); }
+  }
+  if (inR) runs.push([s, W - 1]); return runs;
+}
+
+function measureTorsoHwFrame0(fg0, cx0, pxPerM) {
+  let y0 = IMG_SZ, y1 = 0, c = 0;
+  for (let y = 0; y < IMG_SZ; y++) for (let x = 0; x < IMG_SZ; x++) if (fg0[y*IMG_SZ+x]) { if (y<y0) y0=y; if (y>y1) y1=y; c++; }
+  if (c < 100) return 0.130;
+  const ch = Math.max(100, y1 - y0), hw = [];
+  for (let y = Math.floor(y0 + 0.30 * ch); y < Math.floor(y0 + 0.43 * ch); y++) {
+    const runs = getRowRuns(fg0, y, IMG_SZ).filter((r) => r[0] <= cx0 && cx0 <= r[1] && (r[1] - r[0]) >= 24);
+    if (runs.length) hw.push(0.5 * (runs[0][1] - runs[0][0]) / pxPerM);
+  }
+  return hw.length ? clip(median(hw), 0.110, 0.185) : 0.130;
+}
+
+function calibrateViews(fg, poseMode = "auto") {
+  const V = fg.length, H = IMG_SZ, W = IMG_SZ;
+  const cxsRaw = new Float32Array(V), widths = new Float32Array(V), yTops = new Float32Array(V), yBots = new Float32Array(V);
+  for (let k = 0; k < V; k++) {
+    const ys = [], xs = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (fg[k][y * W + x]) { ys.push(y); xs.push(x); }
+    if (xs.length < 100) { cxsRaw[k] = W*0.5; widths[k] = W*0.25; yTops[k] = H*0.08; yBots[k] = H*0.94; continue; }
+    const y0 = percentile(ys, 0.2), y1 = percentile(ys, 99.8); yTops[k] = y0; yBots[k] = y1;
+    const xsSh = [], xsMid = [];
+    for (let i = 0; i < xs.length; i++) {
+      if (ys[i] >= y0 + 0.15*(y1-y0) && ys[i] <= y0 + 0.38*(y1-y0)) xsSh.push(xs[i]);
+      if (ys[i] >= y0 + 0.05*(y1-y0) && ys[i] <= y0 + 0.90*(y1-y0)) xsMid.push(xs[i]);
+    }
+    const useSh = xsSh.length >= 30 ? xsSh : xs;
+    widths[k] = Math.max(10, percentile(useSh, 99) - percentile(useSh, 1));
+    const useM = xsMid.length ? xsMid : xs; let s = 0; for (const x of useM) s += x; cxsRaw[k] = s / useM.length;
+  }
+  const cxs = new Float32Array(V);
+  for (let k = 0; k < V; k++) { const g = (o) => cxsRaw[(k + o + V) % V]; cxs[k] = 0.1*g(-2)+0.2*g(-1)+0.4*g(0)+0.2*g(1)+0.1*g(2); }
+  const ybMed = median(yBots), ytMed = median(yTops), charHPx = Math.max(220, ybMed - ytMed), pxPerM = charHPx / WORLD_H;
+  const wSm = new Float32Array(V);
+  for (let k = 0; k < V; k++) wSm[k] = 0.25*widths[(k-1+V)%V] + 0.5*widths[k] + 0.25*widths[(k+1)%V];
+
+  const lo1 = Math.floor(0.16*V), hi1 = Math.floor(0.44*V), lo2 = Math.floor(0.60*V), hi2 = Math.floor(0.88*V);
+  let i1 = lo1, i2 = lo2;
+  for (let k = lo1; k <= hi1; k++) if (wSm[k] < wSm[i1]) i1 = k;
+  for (let k = lo2; k <= hi2; k++) if (wSm[k] < wSm[i2]) i2 = k;
+  const bLo = Math.min(i1 + 3, i2 - 1), bHi = Math.max(i1 + 4, i2 - 2); let iBack = bLo;
+  for (let k = bLo; k < bHi; k++) if (wSm[k] > wSm[iBack]) iBack = k;
+
+  const toeDx = (ki) => {
+    const y0s = yTops[ki], y1s = yBots[ki], hs = Math.max(40, y1s - y0s); let as = 0, ac = 0, ts = 0, tc = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (fg[ki][y*W+x]) {
+      if (y >= y0s + 0.84*hs && y <= y0s + 0.92*hs) { as += x; ac++; }
+      if (y >= y0s + 0.955*hs && y <= y1s) { ts += x; tc++; }
+    }
+    return (ac >= 10 && tc >= 5) ? (ts / tc - as / ac) : 0;
+  };
+  const turnDir = (toeDx(i1) - toeDx(i2)) >= 0 ? 1.0 : -1.0;
+  const w0Ratio = wSm[0] / charHPx;
+  const isTpose = poseMode === "tpose" ? true : (poseMode === "apose" ? false : (w0Ratio > 0.56));
+  const halfX = Math.max(0.62, 0.5 * (Math.max(...wSm) / charHPx) * WORLD_H + 0.08);
+  const halfZ = Math.max(0.46, 0.5 * (Math.max(wSm[i1], wSm[i2]) / charHPx) * WORLD_H + 0.14);
+
+  const wFront = Math.max(wSm[0], 1), wBackM = Math.max(wSm[iBack], 1), wSide1 = wSm[i1], wSide2 = wSm[i2];
+  function quadAngles(ka, kb, thA, thB, wW, wN, ris) {
+    const n = kb - ka + 1, raw = new Float64Array(n), uMix = new Float64Array(n), den = Math.max(100, wW*wW - wN*wN);
+    for (let i = 0; i < n; i++) { const ang = Math.acos(Math.sqrt(clip((wSm[ka+i]**2 - wN*wN) / den, 0, 1))); raw[i] = ris ? 1 - ang/(0.5*Math.PI) : ang/(0.5*Math.PI); }
+    const span = Math.max(1e-4, raw[n - 1] - raw[0]);
+    for (let i = 0; i < n; i++) { const v = 0.65 * clip((raw[i]-raw[0])/span, 0, 1) + 0.35*(i/Math.max(1,n-1)); uMix[i] = i > 0 ? Math.max(uMix[i-1], v) : v; }
+    uMix[0] = 0; uMix[n - 1] = 1;
+    const res = new Float32Array(n); for (let i = 0; i < n; i++) res[i] = (thA + uMix[i] * (thB - thA)) * turnDir; return res;
+  }
+  const rEnd = Math.sqrt(clip((wSm[V - 1]**2 - wSide2**2) / Math.max(100, wFront**2 - wSide2**2), 0, 1));
+  const thEnd = clip(2*Math.PI - Math.acos(rEnd), 2*Math.PI*(V-2.5)/V, 2*Math.PI*(V-0.8)/V);
+  const thetas = new Float32Array(V);
+  thetas.set(quadAngles(0, i1, 0, 0.5*Math.PI, wFront, wSide1, false), 0);
+  thetas.set(quadAngles(i1, iBack, 0.5*Math.PI, Math.PI, wBackM, wSide1, true), i1);
+  thetas.set(quadAngles(iBack, i2, Math.PI, 1.5*Math.PI, wBackM, wSide2, false), iBack);
+  thetas.set(quadAngles(i2, V - 1, 1.5*Math.PI, thEnd, wFront, wSide2, true), i2);
+
+  return { thetas, cxs, ybMed, ytMed, pxPerM, anchors: [i1, iBack, i2], isTpose, turnDir, w0Ratio, halfX, halfZ, torsoHwEst: measureTorsoHwFrame0(fg[0], cxs[0], pxPerM) };
+}
+
+function extractLegGapCurve(fg0, fgBack, cx0, cxBack, ybMed, pxPerM) {
+  let yt = IMG_SZ, yb = 0, c = 0;
+  for (let y = 0; y < IMG_SZ; y++) for (let x = 0; x < IMG_SZ; x++) if (fg0[y*IMG_SZ+x]) { if (y<yt) yt=y; if (y>yb) yb=y; c++; }
+  if (c < 100) return null;
+  const ch = Math.max(100, yb - yt), rows = [];
+  for (let y = Math.floor(yt + 0.54 * ch); y <= Math.floor(yb); y++) {
+    if (y < 0 || y >= IMG_SZ) continue;
+    for (const [mask, cx, sgn] of [[fg0, cx0, 1], [fgBack, cxBack, -1]]) {
+      const runs = getRowRuns(mask, y, IMG_SZ).filter((r) => (r[1] - r[0]) >= 4);
+      const lLeg = runs.filter((r) => ((0.5*(r[0]+r[1])-cx)*sgn) > 0.015*pxPerM && Math.abs(r[0]-cx) < 0.22*pxPerM);
+      const rLeg = runs.filter((r) => ((0.5*(r[0]+r[1])-cx)*sgn) < -0.015*pxPerM && Math.abs(r[1]-cx) < 0.22*pxPerM);
+      if (!lLeg.length || !rLeg.length) continue;
+      lLeg.sort((a,b) => Math.abs(0.5*(a[0]+a[1])-cx) - Math.abs(0.5*(b[0]+b[1])-cx));
+      rLeg.sort((a,b) => Math.abs(0.5*(a[0]+a[1])-cx) - Math.abs(0.5*(b[0]+b[1])-cx));
+      const lr = lLeg[0], rr = rLeg[0], gap = sgn > 0 ? (lr[0] - rr[1]) : (rr[0] - lr[1]);
+      if (gap >= 2) { const mx = ((0.5*(rr[1]+lr[0])-cx)*sgn) / pxPerM; if (Math.abs(mx) <= 0.06) { rows.push([(ybMed-y)/pxPerM, mx]); break; } }
+    }
+  }
+  return rows.length >= 4 ? rows.sort((a, b) => a[0] - b[0]) : null;
+}
+
+function extractArmGapCurves(fg0, cx0, ybMed, pxPerM) {
+  let yt = IMG_SZ, yb = 0, c = 0;
+  for (let y = 0; y < IMG_SZ; y++) for (let x = 0; x < IMG_SZ; x++) if (fg0[y*IMG_SZ+x]) { if (y<yt) yt=y; if (y>yb) yb=y; c++; }
+  if (c < 100) return null;
+  const ch = Math.max(100, yb - yt), rowsL = [], rowsR = [], twList = [];
+  for (let y = Math.floor(yt + 0.24*ch); y < Math.floor(yt + 0.62*ch); y++) {
+    if (y < 0 || y >= IMG_SZ) continue;
+    const runs = getRowRuns(fg0, y, IMG_SZ).filter((r) => (r[1]-r[0]) >= 4), tRuns = runs.filter((r) => r[0] <= cx0 && cx0 <= r[1] && (r[1]-r[0]) >= 28);
+    if (!tRuns.length) continue;
+    const [ts, te] = tRuns[0], wy = (ybMed - y) / pxPerM; twList.push(0.5 * (te - ts) / pxPerM);
+    const rRuns = runs.filter((r) => r[1] < ts); if (rRuns.length) { const cm = (0.5*(rRuns[rRuns.length-1][1]+ts)-cx0)/pxPerM; if (cm <= -0.10) rowsR.push([wy, cm]); }
+    const lRuns = runs.filter((r) => r[0] > te); if (lRuns.length) { const cm = (0.5*(te+lRuns[0][0])-cx0)/pxPerM; if (cm >= 0.10) rowsL.push([wy, cm]); }
+  }
+  const contiguous = (arr) => {
+    if (arr.length < 2) return arr; let kept = [arr[0]];
+    for (let i = 1; i < arr.length; i++) {
+      const r = arr[i], p = kept[kept.length - 1];
+      if (Math.abs(p[0]-r[0]) <= 0.030 && Math.abs(p[1]-r[1]) <= 0.050) kept.push(r);
+      else if (kept.length < 6) kept = [r]; else break;
+    }
+    return kept;
+  };
+  return { rowsL: contiguous(rowsL).sort((a,b)=>a[0]-b[0]), rowsR: contiguous(rowsR).sort((a,b)=>a[0]-b[0]), torsoHw: twList.length ? median(twList) : 0.130 };
+}
+function evalGapCurve(rows, yVal, defX) {
+  if (!rows || rows.length < 2) return defX;
+  if (yVal <= rows[0][0]) return rows[0][1];
+  if (yVal >= rows[rows.length - 1][0]) return rows[rows.length - 1][1];
+  for (let i = 0; i < rows.length - 1; i++) if (rows[i][0] <= yVal && yVal <= rows[i + 1][0]) {
+    return rows[i][1] + ((yVal - rows[i][0]) / Math.max(1e-6, rows[i + 1][0] - rows[i][0])) * (rows[i + 1][1] - rows[i][1]);
+  }
+  return defX;
+}
+
+function fitBodyParams(fg, cleanRgb, calib, armGaps = null) {
+  const { pxPerM, ybMed, cxs, anchors, turnDir, isTpose, torsoHwEst } = calib, [i1, iBack, i2] = anchors, H = WORLD_H;
+  function sideZSamples(yLo, yHi) {
+    const zs = [];
+    for (const [ks, sgn] of [[i1, turnDir], [i2, -turnDir]]) {
+      const mask = fg[ks], cx = cxs[ks];
+      for (let y = 0; y < IMG_SZ; y++) {
+        const wy = (ybMed - y) / pxPerM; if (wy < yLo || wy > yHi) continue;
+        const row = y * IMG_SZ; for (let x = 0; x < IMG_SZ; x++) if (mask[row + x]) zs.push(((x - cx) / pxPerM) * sgn);
+      }
+    }
+    return zs.length ? zs : [0];
+  }
+  function frontSpan(ym) {
+    const py = clip(Math.round(ybMed - ym * pxPerM), 0, IMG_SZ - 1), row = py * IMG_SZ;
+    let first = -1, last = -1, cnt = 0;
+    for (let x = 0; x < IMG_SZ; x++) if (fg[0][row + x]) { if (first < 0) first = x; last = x; cnt++; }
+    return cnt >= 4 ? [(first - cxs[0]) / pxPerM, (last - cxs[0]) / pxPerM] : null;
+  }
+
+  const zFacePts = sideZSamples(0.87*H, 0.93*H), zFaceFront = clip(zFacePts.length > 5 ? percentile(zFacePts, 96) : 0.105, 0.055, 0.155);
+  const zTorsoPts = sideZSamples(0.58*H, 0.68*H), czTorso = clip(0.5*(percentile(zTorsoPts, 20)+percentile(zTorsoPts, 85)), -0.025, 0.055);
+  const zLegPts = sideZSamples(0.14*H, 0.30*H), czLegs = clip(zLegPts.length > 5 ? median(zLegPts) : czTorso, -0.03, 0.05);
+
+  const wHd = []; for (let i = 0; i < 8; i++) { const sp = frontSpan((0.88 + 0.05*(i/7))*H); if (sp) wHd.push(0.5*(sp[1]-sp[0])); }
+  const rxHead = clip(wHd.length ? median(wHd) : 0.095, 0.086, 0.102), rzHead = rxHead * 1.08, hcx = 0, hcz = zFaceFront - rzHead;
+  const yCrown = H, neckR = clip(0.40 * rxHead, 0.035, 0.043), czNeck = 0.5 * (czTorso + hcz);
+
+  const wx0 = [], wy0 = [];
+  for (let y = 0; y < IMG_SZ; y++) { const wy = (ybMed - y) / pxPerM, row = y * IMG_SZ; for (let x = 0; x < IMG_SZ; x++) if (fg[0][row + x]) { wx0.push((x - cxs[0]) / pxPerM); wy0.push(wy); } }
+
+  const uBins = linspace(0, 1, 16, true);
+  let rArmBins = new Float32Array(16); for (let i = 0; i < 16; i++) rArmBins[i] = interp1D(uBins[i], [0, 0.18, 0.50, 0.85, 1.0], [0.044, 0.036, 0.031, 0.026, 0.023]);
+  let shX, shoulderY, armSpan, armTipX, handLen, wristX, czArm, alphaL, alphaR;
+
+  if (isTpose) {
+    shX = clip(torsoHwEst * 1.12, 0.118, 0.152);
+    const armY = []; for (let i = 0; i < wx0.length; i++) if (Math.abs(wx0[i]) > torsoHwEst + 0.12 && wy0[i] >= 0.65*H && wy0[i] <= 0.85*H) armY.push(wy0[i]);
+    shoulderY = clip(armY.length >= 20 ? median(armY) : 0.753 * H, 0.71 * H, 0.79 * H);
+    const lPts = [], rPts = [];
+    for (let i = 0; i < wx0.length; i++) if (Math.abs(wy0[i] - shoulderY) < 0.14 * H) { if (wx0[i] > shX + 0.10) lPts.push(wx0[i]); else if (wx0[i] < -(shX + 0.10)) rPts.push(wx0[i]); }
+    armSpan = Math.max(0.42, 0.5 * ((lPts.length >= 10 ? percentile(lPts, 99.5) : 0.62) + Math.abs(rPts.length >= 10 ? percentile(rPts, 0.5) : -0.62)) - shX);
+    armTipX = shX + armSpan; handLen = clip(0.24 * armSpan, 0.125, 0.155); wristX = armTipX - handLen;
+    for (let bi = 0; bi < 16; bi++) {
+      let yMin = 1e9, yMax = -1e9, c = 0;
+      for (let i = 0; i < wx0.length; i++) {
+        const ax = Math.abs(wx0[i]);
+        if (ax >= shX && ax <= wristX && Math.abs(wy0[i] - shoulderY) < 0.10 * H && Math.abs((ax - shX) / Math.max(0.1, wristX - shX) - uBins[bi]) <= 0.045) {
+          if (wy0[i] < yMin) yMin = wy0[i]; if (wy0[i] > yMax) yMax = wy0[i]; c++;
+        }
+      }
+      if (c >= 8) {
+        const rM = 0.5*(yMax - yMin), rE = interp1D(uBins[bi], [0, 0.20, 0.55, 1.0], [0.046, 0.037, 0.031, 0.025]);
+        rArmBins[bi] = Math.max(0.022, Math.min(rE + (uBins[bi] < 0.65 ? 0.015 : 0.006), 0.55*rM + 0.45*rE));
+      }
+    }
+    const sm = new Float32Array(16); for (let i = 0; i < 16; i++) sm[i] = 0.25*rArmBins[Math.max(0,i-1)]+0.5*rArmBins[i]+0.25*rArmBins[Math.min(15,i+1)];
+    rArmBins = sm; czArm = clip(0.5*(czTorso+hcz)*0.6 + median(sideZSamples(shoulderY-0.04, shoulderY+0.04))*0.4, czTorso-0.02, czTorso+0.04);
+    alphaL = 0; alphaR = 0;
+  } else {
+    shX = clip((armGaps ? armGaps.torsoHw : torsoHwEst) * 0.98, 0.118, 0.152);
+    shoulderY = 0.76 * H; armSpan = 0.50; handLen = 0.130; armTipX = shX + armSpan; wristX = armTipX - handLen;
+    czArm = 0.5 * (czTorso + hcz); alphaL = (52 * Math.PI) / 180;
+    if (armGaps && armGaps.rowsL.length >= 2) {
+      const ds = [], dxA = [], dyA = [];
+      for (let i = 0; i < wx0.length; i++) if (wx0[i] > shX + 0.05 && wy0[i] >= 0.35 * H && wy0[i] <= shoulderY) { ds.push(Math.hypot(wx0[i]-shX, wy0[i]-shoulderY)); dxA.push(wx0[i]-shX); dyA.push(shoulderY-wy0[i]); }
+      if (ds.length >= 20) {
+        const th95 = percentile(ds, 95), fdx = [], fdy = [];
+        for (let i = 0; i < ds.length; i++) if (ds[i] >= th95) { fdx.push(dxA[i]); fdy.push(dyA[i]); }
+        alphaL = clip(Math.atan2(Math.max(0.05, median(fdy)), Math.max(0.05, median(fdx))), (20*Math.PI)/180, (74*Math.PI)/180);
+        armSpan = Math.max(0.40, percentile(ds, 99)); armTipX = shX + armSpan; wristX = armTipX - handLen;
+      }
+    }
+    alphaR = alphaL;
+  }
+
+  // Upgrade A: Real Clavicle & Chin landmark detection
+  const ysScan = linspace(0.85 * H, 0.74 * H, 36, true), wsScan = new Float32Array(36);
+  let idxNmin = -1, wNeckMin = 1e9;
+  for (let i = 0; i < 36; i++) {
+    const sp = frontSpan(ysScan[i]); wsScan[i] = sp ? (sp[1] - sp[0]) : 0.25;
+    if (ysScan[i] >= 0.785 * H && ysScan[i] <= 0.848 * H && wsScan[i] < wNeckMin) { wNeckMin = wsScan[i]; idxNmin = i; }
+  }
+  if (idxNmin < 0) { idxNmin = 4; wNeckMin = wsScan[4]; }
+  let yClavRaw = ysScan[idxNmin] - 0.025;
+  const expThresh = Math.max(wNeckMin * 1.24, 0.295);
+  for (let i = idxNmin + 1; i < 36; i++) if (wsScan[i] > expThresh) { yClavRaw = ysScan[i]; break; }
+  const yClavicle = clip(yClavRaw, shoulderY + 0.045, 0.815 * H);
+
+  const ycBins = linspace(0.77 * H, 0.90 * H, 20, true), zfBins = new Float32Array(20);
+  for (let bi = 0; bi < 20; bi++) { const zb = sideZSamples(ycBins[bi] - 0.008, ycBins[bi] + 0.008); zfBins[bi] = zb.length >= 4 ? percentile(zb, 95) : (hcz + rzHead * 0.5); }
+  const zfSm = new Float32Array(20);
+  for (let i = 0; i < 20; i++) zfSm[i] = 0.25 * zfBins[Math.max(0, i-1)] + 0.50 * zfBins[i] + 0.25 * zfBins[Math.min(19, i+1)];
+  let yChinZ = 0.835 * H, bestStep = -1e9;
+  for (let i = 1; i < 19; i++) if (ycBins[i] < 0.865 * H) {
+    const st = zfSm[i + 1] - zfSm[i - 1]; if (st > bestStep) { bestStep = st; yChinZ = ycBins[i]; }
+  }
+  const cx0i = Math.round(cxs[0]), skinYs = [];
+  for (const ym of linspace(0.79 * H, 0.86 * H, 18, true)) {
+    const py = clip(Math.round(ybMed - ym * pxPerM), 0, IMG_SZ - 1);
+    let sr = 0, sg = 0, sb = 0, cnt = 0;
+    for (let x = Math.max(0, cx0i - 8); x < Math.min(IMG_SZ, cx0i + 9); x++) {
+      const p3 = (py * IMG_SZ + x) * 3; sr += cleanRgb[0][p3]; sg += cleanRgb[0][p3+1]; sb += cleanRgb[0][p3+2]; cnt++;
+    }
+    if (cnt && (sr/cnt) > (sg/cnt) + 8 && (sr/cnt) > (sb/cnt) + 16) skinYs.push(ym);
+  }
+  const yChinEst = skinYs.length ? (0.65 * yChinZ + 0.35 * (Math.min(...skinYs) + 0.018)) : yChinZ;
+  const yChin = clip(yChinEst, yClavicle + 0.042, yClavicle + 0.072);
+  const headH = yCrown - yChin, yNeckBase = yClavicle - 0.015;
+
+  const legYsK = [0, 0.055*H, 0.15*H, 0.26*H, 0.36*H, 0.48*H], legCxL = [0.072,0.072,0.072,0.074,0.076,0.076], legRxK = [0.044,0.034,0.042,0.038,0.048,0.056], legRzK = [0.048,0.036,0.044,0.040,0.050,0.058];
+  const legGapRows = extractLegGapCurve(fg[0], fg[iBack], cxs[0], cxs[iBack], ybMed, pxPerM);
+  for (const ki of [1, 2, 3]) {
+    const ym = legYsK[ki], py = clip(Math.round(ybMed - ym * pxPerM), 0, IMG_SZ - 1);
+    const runs = getRowRuns(fg[0], py, IMG_SZ).filter((r) => (r[1]-r[0]) >= 4), midPx = cxs[0] + evalGapCurve(legGapRows, ym, 0) * pxPerM;
+    const lr = runs.filter((r) => 0.5*(r[0]+r[1]) > midPx);
+    if (lr.length) {
+      lr.sort((a,b) => Math.abs(a[0]-midPx) - Math.abs(b[0]-midPx));
+      const b = lr[0], cxm = (0.5*(b[0]+b[1])-cxs[0])/pxPerM, hwm = 0.5*(b[1]-b[0])/pxPerM;
+      if (cxm >= 0.045 && cxm <= 0.125) legCxL[ki] = cxm;
+      legRxK[ki] = clip(hwm, 0.030, 0.055); legRzK[ki] = legRxK[ki] * 1.04;
+    }
+  }
+  legCxL[0] = legCxL[1];
+
+  const zShoePts = sideZSamples(0.005 * H, 0.055 * H);
+  const zShoeHeel = clip(zShoePts.length > 5 ? percentile(zShoePts, 5) : czLegs - 0.055, czLegs - 0.075, czLegs - 0.040);
+  const zShoeToe = clip(zShoePts.length > 5 ? percentile(zShoePts, 96) : czLegs + 0.095, czLegs + 0.075, czLegs + 0.125);
+  const legGapTop = (legGapRows && legGapRows.length) ? Math.min(0.45 * H, legGapRows[legGapRows.length - 1][0]) : 0.36 * H;
+
+  const lsR = [], lsG = [], lsB = [], yl0 = Math.max(0, Math.floor(ybMed - 0.38*H*pxPerM)), yl1 = Math.min(IMG_SZ, Math.ceil(ybMed - 0.24*H*pxPerM));
+  for (const kk of [0, iBack]) {
+    const f = fg[kk], crgb = cleanRgb[kk];
+    for (let y = yl0; y < yl1; y++) for (let x = 0; x < IMG_SZ; x++) {
+      const p = y * IMG_SZ + x; if (!f[p]) continue;
+      const r = crgb[p*3], g = crgb[p*3+1], b = crgb[p*3+2];
+      if (r > b + 12 && r > 110 && r > g - 5) { lsR.push(r); lsG.push(g); lsB.push(b); }
+    }
+  }
+  const hasLegSkin = lsR.length >= 40;
+  const legSkinRgb = hasLegSkin ? [median(lsR), median(lsG), median(lsB)] : [225, 185, 165];
+
+  return {
+    H, isTpose, torsoHw: torsoHwEst, legGapTop, hcx, hcz, rxHead, rzHead, yCrown, yChin, headH, yClavicle,
+    neckR, czNeck, yNeckBase, shoulderY, shX, czArm, wristX, handLen, armTipX, uArmBins: uBins, rArmBins,
+    alphaL, alphaR, czTorso, czLegs, legYsK, legCxL, legRxK, legRzK, zShoeHeel, zShoeToe, hasLegSkin, legSkinRgb
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 3. Mesh Builders: Head + Limbs/Hands/Pelvis + Torso + Hair
+// ---------------------------------------------------------------------------
+function computeVertexNormals(verts, tris) {
+  const vn = new Float32Array(verts.length);
+  for (let i = 0; i < tris.length; i += 3) {
+    const a = tris[i]*3, b = tris[i+1]*3, c = tris[i+2]*3;
+    const e1x = verts[b]-verts[a], e1y = verts[b+1]-verts[a+1], e1z = verts[b+2]-verts[a+2];
+    const e2x = verts[c]-verts[a], e2y = verts[c+1]-verts[a+1], e2z = verts[c+2]-verts[a+2];
+    const nx = e1y*e2z - e1z*e2y, ny = e1z*e2x - e1x*e2z, nz = e1x*e2y - e1y*e2x;
+    vn[a]+=nx; vn[a+1]+=ny; vn[a+2]+=nz; vn[b]+=nx; vn[b+1]+=ny; vn[b+2]+=nz; vn[c]+=nx; vn[c+1]+=ny; vn[c+2]+=nz;
+  }
+  for (let i = 0; i < verts.length; i += 3) {
+    const l = Math.hypot(vn[i], vn[i+1], vn[i+2]);
+    if (l < 1e-5) { vn[i]=0; vn[i+1]=1; vn[i+2]=0; } else { vn[i]/=l; vn[i+1]/=l; vn[i+2]/=l; }
+  }
+  return vn;
+}
+
+function buildLoftShell(rings, uVals, vVals, capStart = true, capEnd = true, preserveFoldWindingBelowRing = -1) {
+  const M = rings.length, K = rings[0].length / 3, baseNv = M * K, extra = (capStart ? 1 : 0) + (capEnd ? 1 : 0);
+  const verts = new Float32Array((baseNv + extra) * 3), uv = new Float32Array((baseNv + extra) * 2);
+  for (let mi = 0; mi < M; mi++) {
+    verts.set(rings[mi], mi * K * 3);
+    for (let ki = 0; ki < K; ki++) { uv[(mi*K+ki)*2] = uVals[ki]; uv[(mi*K+ki)*2+1] = vVals[mi]; }
+  }
+  const triList = [], sub3 = (i, j) => [verts[i*3]-verts[j*3], verts[i*3+1]-verts[j*3+1], verts[i*3+2]-verts[j*3+2]];
+  const cross = (u, v) => [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]], dot = (u, v) => u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
+  const ringMean = (sIdx) => {
+    let sx=0, sy=0, sz=0; for (let k=0; k<K-1; k++) { const i=(sIdx+k)*3; sx+=verts[i]; sy+=verts[i+1]; sz+=verts[i+2]; }
+    return [sx/(K-1), sy/(K-1), sz/(K-1)];
+  };
+
+  const useGlobal = preserveFoldWindingBelowRing >= 0;
+  let outerFwd = true;
+  if (useGlobal) {
+    const oMi = clip(preserveFoldWindingBelowRing, 0, M - 2), r0o = oMi*K, r1o = (oMi+1)*K, ko = K >> 2;
+    const cm0 = ringMean(r0o), cm1 = ringMean(r1o), cMidO = [0.5*(cm0[0]+cm1[0]), 0.5*(cm0[1]+cm1[1]), 0.5*(cm0[2]+cm1[2])];
+    const ao = r0o + ko, bo = r0o + ko + 1, co = r1o + ko + 1;
+    const qMidO = [(verts[ao*3]+verts[bo*3]+verts[co*3])/3, (verts[ao*3+1]+verts[bo*3+1]+verts[co*3+1])/3, (verts[ao*3+2]+verts[bo*3+2]+verts[co*3+2])/3];
+    outerFwd = dot(cross(sub3(bo, ao), sub3(co, ao)), [qMidO[0]-cMidO[0], qMidO[1]-cMidO[1], qMidO[2]-cMidO[2]]) >= 0;
+  }
+
+  for (let mi = 0; mi < M - 1; mi++) {
+    const cm0 = ringMean(mi*K), cm1 = ringMean((mi+1)*K), cMid = [0.5*(cm0[0]+cm1[0]), 0.5*(cm0[1]+cm1[1]), 0.5*(cm0[2]+cm1[2])];
+    for (let ki = 0; ki < K - 1; ki++) {
+      const a = mi*K + ki, b = mi*K + ki + 1, c = (mi+1)*K + ki + 1, d = (mi+1)*K + ki;
+      let fwd = outerFwd;
+      if (!useGlobal) {
+        const qM = [0.25*(verts[a*3]+verts[b*3]+verts[c*3]+verts[d*3]), 0.25*(verts[a*3+1]+verts[b*3+1]+verts[c*3+1]+verts[d*3+1]), 0.25*(verts[a*3+2]+verts[b*3+2]+verts[c*3+2]+verts[d*3+2])];
+        fwd = dot(cross(sub3(b, a), sub3(c, a)), [qM[0]-cMid[0], qM[1]-cMid[1], qM[2]-cMid[2]]) >= 0;
+      }
+      if (fwd) triList.push(a, b, c, a, c, d); else triList.push(a, c, b, a, d, c);
+    }
+  }
+  let capOff = baseNv, uMean = 0; for (const u of uVals) uMean += u; uMean /= uVals.length;
+  if (capStart) {
+    const c0 = ringMean(0), p0n = ringMean(K), cid = capOff++;
+    verts[cid*3]=c0[0]; verts[cid*3+1]=c0[1]; verts[cid*3+2]=c0[2]; uv[cid*2]=uMean; uv[cid*2+1]=vVals[0];
+    const od = [c0[0]-p0n[0], c0[1]-p0n[1], c0[2]-p0n[2]];
+    for (let ki = 0; ki < K - 1; ki++) { if (dot(cross(sub3(ki+1, cid), sub3(ki, cid)), od) >= 0) triList.push(cid, ki+1, ki); else triList.push(cid, ki, ki+1); }
+  }
+  if (capEnd) {
+    const base = (M - 1)*K, c1 = ringMean(base), p1p = ringMean((M - 2)*K), cid = capOff++;
+    verts[cid*3]=c1[0]; verts[cid*3+1]=c1[1]; verts[cid*3+2]=c1[2]; uv[cid*2]=uMean; uv[cid*2+1]=vVals[M - 1];
+    const od = [c1[0]-p1p[0], c1[1]-p1p[1], c1[2]-p1p[2]];
+    for (let ki = 0; ki < K - 1; ki++) { const a = base+ki, b = base+ki+1; if (dot(cross(sub3(b, cid), sub3(a, cid)), od) <= 0) triList.push(cid, a, b); else triList.push(cid, b, a); }
+  }
+  return { verts, tris: new Int32Array(triList), uv };
+}
+
+function mergeShells(partsList) {
+  let totV = 0, totT = 0; for (const p of partsList) { totV += p.verts.length / 3; totT += p.tris.length; }
+  const verts = new Float32Array(totV * 3), tris = new Int32Array(totT), uv = new Float32Array(totV * 2), partTag = new Int32Array(totV);
+  let vOff = 0, tOff = 0;
+  for (const p of partsList) {
+    const nv = p.verts.length / 3; verts.set(p.verts, vOff * 3); uv.set(p.uv, vOff * 2);
+    if (p.tag instanceof Int32Array) partTag.set(p.tag, vOff); else partTag.fill(p.tag, vOff, vOff + nv);
+    for (let i = 0; i < p.tris.length; i++) tris[tOff + i] = p.tris[i] + vOff;
+    vOff += nv; tOff += p.tris.length;
+  }
+  return { verts, tris, uv, normals: computeVertexNormals(verts, tris), partTag };
+}
+
+function buildProceduralHead(params) {
+  const { hcx, hcz, rxHead, rzHead, yCrown, yChin, headH, neckR, czNeck, yNeckBase } = params;
+  const N_TH = 64, phis = linspace(-Math.PI, Math.PI, N_TH + 1, true), padH = 12 / TEX_SZ;
+  const uRing = new Float32Array(N_TH + 1), sinP = new Float32Array(N_TH + 1), cosP = new Float32Array(N_TH + 1), frontC = new Float32Array(N_TH + 1);
+  for (let i = 0; i <= N_TH; i++) {
+    const sp = phis[i] / Math.PI; uRing[i] = padH + (0.5 + 0.5 * (0.62 * sp + 0.38 * Math.sin(0.5 * Math.PI * sp))) * (1 - 2 * padH);
+    sinP[i] = Math.sin(phis[i]); cosP[i] = Math.cos(phis[i]); frontC[i] = Math.max(0, cosP[i]);
+  }
+  const ysNeck = linspace(yNeckBase, yChin - 0.022, 8, true);
+  const tsHead = [...linspace(0, 0.14, 7, false), ...linspace(0.14, 0.72, 20, false), ...linspace(0.72, 0.992, 12, true)];
+  const ysAll = [...ysNeck, ...tsHead.map((t) => yChin + t * headH)], yTotal = yCrown - yNeckBase, rings = [], vVals = new Float32Array(ysAll.length);
+
+  for (let ri = 0; ri < ysAll.length; ri++) {
+    const y = ysAll[ri]; vVals[ri] = padH + clip((yCrown - y) / Math.max(1e-4, yTotal), 0, 1) * (1 - 2 * padH);
+    const ring = new Float32Array((N_TH + 1) * 3);
+    if (y < yChin) {
+      const un = clip((y - yNeckBase) / Math.max(0.02, yChin - yNeckBase), 0, 1), flare = 1 + 0.12 * (Math.max(0, 1 - 2.6 * un) ** 2);
+      const rx = neckR * flare, rz = neckR * 1.02 * flare, cz = czNeck + un * (hcz - czNeck) * 0.45;
+      for (let ki = 0; ki <= N_TH; ki++) { ring[ki*3] = hcx + rx*sinP[ki]; ring[ki*3+1] = y; ring[ki*3+2] = cz + rz*cosP[ki]; }
+    } else {
+      const t = clip((y - yChin) / headH, 0, 1); let rx, rzF, rzB;
+      if (t < 0.32) {
+        const wt = t/0.32, s = Math.sin(0.5*Math.PI*wt);
+        rx = neckR*0.92 + (rxHead*0.96 - neckR*0.92)*(s**0.78); rzF = neckR*0.95 + (rzHead*0.95 - neckR*0.95)*(s**0.65); rzB = neckR*0.95 + (rzHead*0.95 - neckR*0.95)*(s**0.85);
+      } else if (t < 0.66) {
+        const wt = (t-0.32)/0.34; rx = rxHead*(0.96+0.04*Math.sin(Math.PI*wt)); rzF = rzHead*(0.95+0.05*Math.sin(Math.PI*wt*0.8)); rzB = rzHead*(0.95+0.07*wt);
+      } else {
+        const dome = Math.cos(0.5*Math.PI*Math.min(1, ((t-0.66)/0.34)*0.985)); rx = rxHead*0.96*dome; rzF = rzHead*0.96*dome; rzB = rzHead*1.02*dome;
+      }
+      const jt = Math.max(0, 1 - t/0.34)**1.3, czb = 0.006 * Math.exp(-(((t-0.06)/0.08)**2));
+      for (let ki = 0; ki <= N_TH; ki++) {
+        const phi = phis[ki], fc = frontC[ki];
+        const nose = 0.0085 * Math.exp(-((phi/0.16)**2) - (((t-0.42)/0.10)**2));
+        const cheek = 0.0045 * Math.exp(-(((Math.abs(phi)-0.55)/0.30)**2) - (((t-0.38)/0.14)**2));
+        const rzEff = cosP[ki] >= 0 ? rzF*(1-0.12*jt) : rzB, rxEff = rx*(1-0.10*jt*(fc**1.5));
+        const yDip = 0.005 * Math.exp(-(((t-0.02)/0.05)**2)) * (fc*fc);
+        ring[ki*3] = hcx + rxEff*sinP[ki]; ring[ki*3+1] = y - yDip; ring[ki*3+2] = hcz + rzEff*cosP[ki] + nose + cheek + czb*(fc*fc);
+      }
+    }
+    rings.push(ring);
+  }
+  const parts = [{ ...buildLoftShell(rings, uRing, vVals, true, true), tag: 0 }];
+  const earY = yChin + 0.47 * headH;
+  for (const [sgn, u0, u1] of [[1, 0.90, 0.985], [-1, 0.015, 0.10]]) {
+    const ephis = linspace(-Math.PI, Math.PI, 13, true), eu = Array.from(ephis, (p) => u0 + ((p/Math.PI)*0.5+0.5)*(u1-u0)), ev = linspace(0.88, 0.985, 6, true), eRings = [];
+    for (let ei = 0; ei < 6; ei++) {
+      const s = ei/5, ss = Math.sin(Math.PI*(0.15+0.7*s)), exC = sgn*(rxHead*0.88+0.008*Math.sin(0.5*Math.PI*s)), ezC = hcz-0.008-0.005*s;
+      const er = new Float32Array(13*3);
+      for (let ki = 0; ki < 13; ki++) { er[ki*3] = exC + sgn*0.008*ss*0.35*Math.sin(ephis[ki]); er[ki*3+1] = earY + 0.020*ss*Math.sin(ephis[ki]); er[ki*3+2] = ezC + 0.011*ss*Math.cos(ephis[ki]); }
+      eRings.push(er);
+    }
+    parts.push({ ...buildLoftShell(eRings, eu, ev, true, true), tag: 1 });
+  }
+  return mergeShells(parts);
+}
+
+function buildProceduralLimbsAndHands(params) {
+  const { H, isTpose, shX, shoulderY, czArm, wristX, handLen, uArmBins, rArmBins, legYsK, legCxL, legRxK, legRzK, czLegs, czTorso, zShoeHeel, zShoeToe } = params;
+  const parts = [];
+  const rectU = (u, rect, pad = 5) => (rect[0] + pad + clip(u, 0, 1) * (rect[2] - rect[0] - 2 * pad)) / TEX_SZ;
+  const rectV = (v, rect, pad = 5) => (rect[1] + pad + clip(v, 0, 1) * (rect[3] - rect[1] - 2 * pad)) / TEX_SZ;
+  function poseArmRing(ring, sgn) {
+    if (isTpose) return ring;
+    const ang = -(sgn > 0 ? params.alphaL : params.alphaR); if (Math.abs(ang) < 1e-4) return ring;
+    const rot = ang * sgn, c = Math.cos(rot), s = Math.sin(rot), pxS = sgn * shX;
+    for (let i = 0; i < ring.length; i += 3) { const dx = ring[i]-pxS, dy = ring[i+1]-shoulderY; ring[i]=pxS+c*dx-s*dy; ring[i+1]=shoulderY+s*dx+c*dy; }
+    return ring;
+  }
+
+  const armRects = { 1: [6, 6, 342, 496], "-1": [518, 6, 854, 496] }, handRects = { 1: [348, 6, 508, 496], "-1": [860, 6, 1018, 496] };
+  const N_ATH = 24, phisA = linspace(-Math.PI, Math.PI, N_ATH + 1, true), palmLen = 0.46 * handLen;
+  const usArm = [...linspace(-0.08, 0, 3, false), ...linspace(0, 0.42, 6, false), ...linspace(0.42, 0.56, 4, false), ...linspace(0.56, 0.96, 6, false)];
+  const tpsPalm = linspace(0, 1, 8, true);
+
+  for (const sgn of [1, -1]) {
+    const rWr = rArmBins[rArmBins.length - 1], rings = [], uRingUv = [], tagRings = [];
+    for (const uai of usArm) {
+      const r = interp1D(clip(uai, 0, 1), uArmBins, rArmBins), xx = sgn*(shX + uai*(wristX - shX)), tw = clip((uai-0.75)/0.25, 0, 1);
+      const ry = r*(1-0.22*tw), rz = r*(1+0.05*tw), ring = new Float32Array((N_ATH+1)*3);
+      for (let ki=0; ki<=N_ATH; ki++) { ring[ki*3]=xx; ring[ki*3+1]=shoulderY+ry*Math.cos(phisA[ki]); ring[ki*3+2]=czArm+rz*Math.sin(phisA[ki]); }
+      rings.push(poseArmRing(ring, sgn)); uRingUv.push(0.76*(uai+0.08)/1.08); tagRings.push(0);
+    }
+    for (const tp of tpsPalm) {
+      const xx = sgn*(wristX+tp*palmLen), ry = rWr*0.78*(1-0.20*tp), rz = rWr*(1.05+0.42*Math.sin(0.5*Math.PI*tp)), cy = shoulderY-0.002*tp, cz = czArm+0.002*Math.sin(Math.PI*tp), expP = 1-0.22*tp;
+      const ring = new Float32Array((N_ATH+1)*3);
+      for (let ki=0; ki<=N_ATH; ki++) {
+        const ca = Math.cos(phisA[ki]), sa = Math.sin(phisA[ki]);
+        ring[ki*3]=xx; ring[ki*3+1]=cy+ry*Math.sign(ca)*(Math.abs(ca)**expP); ring[ki*3+2]=cz+rz*Math.sign(sa)*(Math.abs(sa)**expP);
+      }
+      rings.push(poseArmRing(ring, sgn)); uRingUv.push(0.76+0.24*tp); tagRings.push(sgn > 0 ? 1 : 2);
+    }
+    const N_TOT_R = rings.length, rectA = armRects[String(sgn)], uaX = uRingUv.map((u) => rectU(u, rectA, 5)), vaY = Array.from(phisA, (p) => rectV(0.5+0.5*(p/Math.PI), rectA, 5));
+    const armSh = buildLoftShell(rings, linspace(0, 1, N_ATH + 1), linspace(0, 1, N_TOT_R), true, true), armTag = new Int32Array(armSh.verts.length / 3);
+    for (let ri = 0; ri < N_TOT_R; ri++) for (let ki = 0; ki <= N_ATH; ki++) { const vid = ri*(N_ATH+1)+ki; armSh.uv[vid*2]=uaX[ri]; armSh.uv[vid*2+1]=vaY[ki]; armTag[vid]=tagRings[ri]; }
+    armSh.uv[N_TOT_R*(N_ATH+1)*2]=uaX[0]; armSh.uv[N_TOT_R*(N_ATH+1)*2+1]=vaY[N_ATH>>1];
+    armSh.uv[(N_TOT_R*(N_ATH+1)+1)*2]=uaX[N_TOT_R-1]; armSh.uv[(N_TOT_R*(N_ATH+1)+1)*2+1]=vaY[N_ATH>>1];
+    armTag[armTag.length - 1] = sgn > 0 ? 1 : 2;
+    parts.push({ verts: armSh.verts, tris: armSh.tris, uv: armSh.uv, tag: armTag });
+
+    const rectH = handRects[String(sgn)], fStripH = (rectH[3] - rectH[1]) / 5.0;
+    const fSpecs = [[0.22,0.019,35,-10,0.42,0.0085,0],[0.92,0.024,6.5,-8,0.48,0.0072,1],[0.96,0.008,1.5,-8,0.54,0.0074,2],[0.93,-0.009,-2.5,-9,0.49,0.0069,3],[0.88,-0.025,-7.5,-10,0.39,0.0060,4]];
+    const N_FTH = 12, phisF = linspace(-Math.PI, Math.PI, N_FTH + 1, true), tsF = [...linspace(0, 0.84, 6, false), 0.89, 0.95, 0.992], N_FR = tsF.length;
+    for (const [bxF, bzOff, yawD, curlD, lF, rB, fidx] of fSpecs) {
+      const fRect = [rectH[0], rectH[1]+fidx*fStripH, rectH[2], rectH[1]+(fidx+1)*fStripH-3];
+      const flen = lF*handLen, yaw = (yawD*Math.PI)/180, curlMax = (curlD*Math.PI)/180, rx0 = wristX+bxF*palmLen, ry0 = shoulderY-0.003, rz0 = czArm+bzOff, fRings = [];
+      for (const tf of tsF) {
+        const angC = curlMax*(tf**1.3), sAx = tf*flen, pxL = rx0+sAx*Math.cos(yaw), pzL = rz0+sAx*Math.sin(yaw), pyL = ry0+0.5*sAx*Math.sin(angC);
+        const rad = tf<=0.84 ? rB*(1-0.18*(tf/0.84)) : rB*0.82*Math.sqrt(Math.max(0.02, 1-(((tf-0.84)/0.16)**2))), nxZ = -Math.sin(yaw), nzZ = Math.cos(yaw), rArr = new Float32Array((N_FTH+1)*3);
+        for (let ki=0; ki<=N_FTH; ki++) { rArr[ki*3]=sgn*(pxL+rad*nxZ*Math.sin(phisF[ki])); rArr[ki*3+1]=pyL+rad*0.90*Math.cos(phisF[ki]); rArr[ki*3+2]=pzL+rad*nzZ*Math.sin(phisF[ki]); }
+        fRings.push(poseArmRing(rArr, sgn));
+      }
+      const fSh = buildLoftShell(fRings, linspace(0, 1, N_FTH+1), linspace(0, 1, N_FR), true, true);
+      const ufX = tsF.map((t) => rectU(t, fRect, 3)), vfY = Array.from(phisF, (p) => rectV(0.5+0.5*(p/Math.PI), fRect, 3));
+      let ufSum = 0; for (const u of ufX) ufSum += u; const ufMean = ufSum / ufX.length;
+      for (let ri=0; ri<N_FR; ri++) for (let ki=0; ki<=N_FTH; ki++) { const vid=ri*(N_FTH+1)+ki; fSh.uv[vid*2]=ufX[ri]; fSh.uv[vid*2+1]=vfY[ki]; }
+      fSh.uv[N_FR*(N_FTH+1)*2]=ufMean; fSh.uv[N_FR*(N_FTH+1)*2+1]=vfY[N_FTH>>1]; fSh.uv[(N_FR*(N_FTH+1)+1)*2]=ufMean; fSh.uv[(N_FR*(N_FTH+1)+1)*2+1]=vfY[N_FTH>>1];
+      parts.push({ verts: fSh.verts, tris: fSh.tris, uv: fSh.uv, tag: sgn > 0 ? 1 : 2 });
+    }
+  }
+
+  // Closed Hip Cap (part_tag = 4): closes the mesh between the legs -> (6..506, 502..534)
+  const pelRect = [6, 502, 506, 534], N_PTH = 24, N_PR = 10, phisP = linspace(-Math.PI, Math.PI, N_PTH + 1, true);
+  const yPelBot = Math.max(0.32 * H, params.legGapTop - 0.015), ysPel = linspace(yPelBot, 0.55 * H, N_PR, true);
+  const rxHip = Math.min(0.135, legCxL[4] + legRxK[4] * 0.92), rzHip = Math.min(0.095, legRzK[4] * 1.45), pRings = [];
+  for (let ri = 0; ri < N_PR; ri++) {
+    const tp = ri / (N_PR - 1), fl = Math.sin(0.5 * Math.PI * (0.25 + 0.75 * tp)), zcp = czLegs + tp * (czTorso - czLegs), rArr = new Float32Array((N_PTH + 1) * 3);
+    for (let ki = 0; ki <= N_PTH; ki++) { rArr[ki*3] = rxHip * fl * Math.sin(phisP[ki]); rArr[ki*3+1] = ysPel[ri]; rArr[ki*3+2] = zcp + rzHip * fl * Math.cos(phisP[ki]); }
+    pRings.push(rArr);
+  }
+  const pelSh = buildLoftShell(pRings, phisP.map((p) => rectU(0.5+0.5*(p/Math.PI), pelRect, 4)), linspace(1, 0, N_PR, true).map((v) => rectV(v, pelRect, 4)), true, true);
+  parts.push({ verts: pelSh.verts, tris: pelSh.tris, uv: pelSh.uv, tag: 4 });
+
+  // Legs + Shoes -> (6..506, 538..1018) and (518..1018, 538..1018)
+  const legRects = { 1: [6, 538, 506, 1018], "-1": [518, 538, 1018, 1018] }, N_LTH = 24, phisL = linspace(-Math.PI, Math.PI, N_LTH + 1, true);
+  const ysL = [...linspace(0.002, 0.065*H, 8, false), ...linspace(0.065*H, 0.49*H, 22, true)];
+  for (const sgn of [1, -1]) {
+    const lr = legRects[String(sgn)], ul = phisL.map((p) => rectU(0.5+0.5*(p/Math.PI), lr, 6)), vl = linspace(1, 0, ysL.length, true).map((v) => rectV(v, lr, 6)), lRings = [];
+    for (let ri = 0; ri < ysL.length; ri++) {
+      const yl = ysL[ri], cxS = sgn*interp1D(yl, legYsK, legCxL), rx = interp1D(yl, legYsK, legRxK), rzK = interp1D(yl, legYsK, legRzK);
+      let bw = rx, zc = czLegs, rzm = rzK;
+      if (yl < 0.062*H) { const tf = 1-yl/(0.062*H); bw = rx*(1+0.22*Math.sin(0.5*Math.PI*tf)); const zf = rzK+tf*Math.max(0.02, zShoeToe-czLegs-rzK), zb = rzK+tf*Math.max(0.01, czLegs-zShoeHeel-rzK); zc = czLegs+0.5*(zf-zb); rzm = 0.5*(zf+zb); }
+      const rArr = new Float32Array((N_LTH+1)*3);
+      for (let ki=0; ki<=N_LTH; ki++) { rArr[ki*3]=cxS+bw*Math.sin(phisL[ki]); rArr[ki*3+1]=yl; rArr[ki*3+2]=zc+rzm*Math.cos(phisL[ki]); }
+      lRings.push(rArr);
+    }
+    const legSh = buildLoftShell(lRings, ul, vl, true, true);
+    parts.push({ verts: legSh.verts, tris: legSh.tris, uv: legSh.uv, tag: 0 });
+  }
+  return mergeShells(parts);
+}
+
+// ---------------------------------------------------------------------------
+// 4. Shared Occupancy, Color-Aware Polar-Lofted Torso, SurfaceNets Hair
+// ---------------------------------------------------------------------------
+function countMissesPts(pts, fgMasks, thetas, cxs, ybMed, pxPerM) {
+  const V = fgMasks.length, nPts = pts.length / 3, misses = new Uint8Array(nPts), pyArr = new Int32Array(nPts);
+  for (let i = 0; i < nPts; i++) pyArr[i] = clip(Math.round(ybMed - pts[i*3+1]*pxPerM), 0, IMG_SZ - 1);
+  for (let k = 0; k < V; k++) {
+    const ct = Math.cos(thetas[k]), st = Math.sin(thetas[k]), cx = cxs[k], mask = fgMasks[k];
+    for (let i = 0; i < nPts; i++) {
+      const px = Math.round(cx + (pts[i*3]*ct + pts[i*3+2]*st)*pxPerM);
+      if (px < 0 || px >= IMG_SZ || !mask[pyArr[i]*IMG_SZ + px]) misses[i]++;
+    }
+  }
+  return misses;
+}
+
+function buildVideoOccupancy(fg, calib, params) {
+  const { thetas, cxs, ybMed, pxPerM, anchors, halfX, halfZ } = calib, H = params.H;
+  const [nxC, nyC, nzC] = COARSE_GRID, nx = nxC*SUBDIV, ny = nyC*SUBDIV, nz = nzC*SUBDIV;
+  const dxC = (2*halfX)/nxC, dyC = WORLD_H/nyC, dzC = (2*halfZ)/nzC, dx = (2*halfX)/nx, dy = WORLD_H/ny, dz = (2*halfZ)/nz;
+  const fgCoarse = fg.map((m) => dilate2dSingle(m, IMG_SZ, IMG_SZ, Math.ceil(1.05*Math.max(dxC, dyC)*pxPerM)+2));
+  const fgBody = fg.map((m) => dilate2dSingle(m, IMG_SZ, IMG_SZ, 2)), fgLimb = fg.map((m) => dilate2dSingle(m, IMG_SZ, IMG_SZ, 1));
+  const nC = nxC*nyC*nzC, cPts = new Float32Array(nC*3); let ci = 0;
+  for (let ix=0; ix<nxC; ix++) for (let iy=0; iy<nyC; iy++) for (let iz=0; iz<nzC; iz++) { cPts[ci*3]=-halfX+(ix+0.5)*dxC; cPts[ci*3+1]=(iy+0.5)*dyC; cPts[ci*3+2]=-halfZ+(iz+0.5)*dzC; ci++; }
+  const cMiss = countMissesPts(cPts, fgCoarse, thetas, cxs, ybMed, pxPerM), occC = new Uint8Array(nC);
+  for (let i = 0; i < nC; i++) if (cMiss[i] <= 4) occC[i] = 1;
+  const occVideo = new Uint8Array(nx*ny*nz), bCoords = [], cIdx = (x,y,z)=>(x*nyC+y)*nzC+z, fIdx = (x,y,z)=>(x*ny+y)*nz+z;
+  for (let ix=0; ix<nxC; ix++) for (let iy=0; iy<nyC; iy++) for (let iz=0; iz<nzC; iz++) {
+    if (!occC[cIdx(ix,iy,iz)]) continue;
+    let emp = (ix===0||iy===0||iz===0||ix===nxC-1||iy===nyC-1||iz===nzC-1);
+    for (let ox=-1; ox<=1&&!emp; ox++) for (let oy=-1; oy<=1&&!emp; oy++) for (let oz=-1; oz<=1; oz++) if (!occC[cIdx(ix+ox,iy+oy,iz+oz)]) { emp=true; break; }
+    for (let ox=0; ox<SUBDIV; ox++) for (let oy=0; oy<SUBDIV; oy++) for (let oz=0; oz<SUBDIV; oz++) {
+      if (!emp) occVideo[fIdx(ix*SUBDIV+ox, iy*SUBDIV+oy, iz*SUBDIV+oz)] = 1;
+      else bCoords.push(ix*SUBDIV+ox, iy*SUBDIV+oy, iz*SUBDIV+oz);
+    }
+  }
+  const nB = bCoords.length/3, bPts = new Float32Array(nB*3);
+  for (let i=0; i<nB; i++) { bPts[i*3]=-halfX+(bCoords[i*3]+0.5)*dx; bPts[i*3+1]=(bCoords[i*3+1]+0.5)*dy; bPts[i*3+2]=-halfZ+(bCoords[i*3+2]+0.5)*dz; }
+  const bMiss = countMissesPts(bPts, fgBody, thetas, cxs, ybMed, pxPerM);
+  for (let i=0; i<nB; i++) if (bMiss[i] <= 3) occVideo[fIdx(bCoords[i*3], bCoords[i*3+1], bCoords[i*3+2])] = 1;
+
+  const actI = [], actPtsList = [];
+  for (let ix=0; ix<nx; ix++) for (let iy=0; iy<ny; iy++) for (let iz=0; iz<nz; iz++) {
+    const id = fIdx(ix, iy, iz); if (occVideo[id]) { actI.push(id); actPtsList.push(-halfX+(ix+0.5)*dx, (iy+0.5)*dy, -halfZ+(iz+0.5)*dz); }
+  }
+  if (actI.length) {
+    const actPts = new Float32Array(actPtsList), keyIdx = [0, anchors[0], anchors[1], anchors[2]];
+    const kMiss = countMissesPts(actPts, keyIdx.map((k)=>fgLimb[k]), keyIdx.map((k)=>thetas[k]), keyIdx.map((k)=>cxs[k]), ybMed, pxPerM);
+    const protIdx = [], protPts = [];
+    for (let i = 0; i < actI.length; i++) {
+      if (kMiss[i] > 0) { occVideo[actI[i]] = 0; continue; }
+      const vx = actPts[i*3], vy = actPts[i*3+1], vz = actPts[i*3+2];
+      if (vy >= params.shoulderY - 0.14*H && !((Math.abs(vx) < params.torsoHw + 0.025) && ((vz - params.czTorso) > -0.095)) && Math.abs(vx) < params.shX + 0.16) {
+        protIdx.push(actI[i]); protPts.push(vx, vy, vz);
+      }
+    }
+    if (protIdx.length) {
+      const pMiss = countMissesPts(new Float32Array(protPts), fgLimb, thetas, cxs, ybMed, pxPerM);
+      for (let i=0; i<protIdx.length; i++) if (pMiss[i] > 1) occVideo[protIdx[i]] = 0;
+    }
+  }
+  const gx = new Float32Array(nx), gy = new Float32Array(ny), gz = new Float32Array(nz);
+  for (let i=0; i<nx; i++) gx[i] = -halfX+(i+0.5)*dx; for (let i=0; i<ny; i++) gy[i] = (i+0.5)*dy; for (let i=0; i<nz; i++) gz[i] = -halfZ+(i+0.5)*dz;
+  return { occVideo, gx, gy, gz, dx, dy, dz, nx, ny, nz };
+}
+
+function buildPolarLoftedTorso(vol, fg, cleanRgb, calib, params, armGaps = null) {
+  const { occVideo, gx, gy, gz, dx, dy, dz, nx, ny, nz } = vol;
+  const { H, isTpose, shX, shoulderY, neckR, legGapTop, czTorso, czLegs, czNeck } = params;
+  const { halfX, halfZ, thetas, cxs, ybMed, pxPerM, anchors } = calib;
+  const yNeckTop = params.yClavicle + 0.002, fIdx = (x, y, z) => (x*ny + y)*nz + z;
+  const occSrc = Uint8Array.from(occVideo);
+
+  const cutL = armGaps ? gy.map((y) => evalGapCurve(armGaps.rowsL, y, shX + 0.03)) : null;
+  const cutR = armGaps ? gy.map((y) => evalGapCurve(armGaps.rowsR, y, -(shX + 0.03))) : null;
+  const yLoA = armGaps ? Math.max(0.35*H, Math.min(armGaps.rowsL.length?armGaps.rowsL[0][0]:0.55, armGaps.rowsR.length?armGaps.rowsR[0][0]:0.55)-0.04) : 0.55;
+  const lcxM = gy.map((y) => interp1D(y, params.legYsK, params.legCxL));
+  const lrxM = gy.map((y) => interp1D(y, params.legYsK, params.legRxK) * 1.65);
+  const lrzM = gy.map((y) => interp1D(y, params.legYsK, params.legRzK) * 1.65);
+
+  const iBack = anchors[1], ls = params.legSkinRgb;
+  const ct0 = Math.cos(thetas[0]), st0 = Math.sin(thetas[0]), ctB = Math.cos(thetas[iBack]), stB = Math.sin(thetas[iBack]);
+  for (let iy = 0; iy < ny; iy++) {
+    const vy = gy[iy];
+    if (vy < 0.20*H || vy >= params.yChin - 0.01) { for (let ix=0; ix<nx; ix++) for (let iz=0; iz<nz; iz++) occSrc[fIdx(ix,iy,iz)] = 0; continue; }
+    const ySlope = clip((vy - shoulderY) / Math.max(0.04, yNeckTop - shoulderY), 0, 1);
+    const xCap = vy >= shoulderY ? (1 - ySlope)*(shX + 0.048) + ySlope*(neckR * 1.45) : shX + 0.045;
+    const inLeg = vy < legGapTop + 0.030, inSkinY = params.hasLegSkin && vy < legGapTop + 0.045;
+    const pyImg = clip(Math.round(ybMed - vy * pxPerM), 0, IMG_SZ - 1);
+    for (let ix = 0; ix < nx; ix++) {
+      const vx = gx[ix];
+      const armClip = isTpose ? (Math.abs(vx) > xCap && Math.abs(vy - shoulderY) < 0.14*H) : (armGaps && vy >= yLoA && vy <= shoulderY + 0.06 && (vx > cutL[iy] || vx < cutR[iy]));
+      if (armClip) { for (let iz=0; iz<nz; iz++) occSrc[fIdx(ix,iy,iz)] = 0; continue; }
+      for (let iz = 0; iz < nz; iz++) {
+        const vz = gz[iz], id = fIdx(ix, iy, iz); if (!occSrc[id]) continue;
+        if (vy >= shoulderY - 0.04*H && (((vz < czTorso - 0.125) && Math.abs(vx) < 0.105) || (Math.abs(vx) > shX*0.85 && vy > shoulderY + 0.025))) { occSrc[id] = 0; continue; }
+        if (inLeg && ((((vx - lcxM[iy])/lrxM[iy])**2 + ((vz - czLegs)/lrzM[iy])**2 <= 1) || (((vx + lcxM[iy])/lrxM[iy])**2 + ((vz - czLegs)/lrzM[iy])**2 <= 1))) { occSrc[id] = 0; continue; }
+        if (inSkinY) {
+          let isSkin = true, seen = false;
+          for (const [kk, ct, st] of [[0, ct0, st0], [iBack, ctB, stB]]) {
+            const pxv = clip(Math.round(cxs[kk] + (vx*ct + vz*st)*pxPerM), 0, IMG_SZ - 1), pid = pyImg*IMG_SZ + pxv;
+            if (fg[kk][pid]) {
+              seen = true; const c3 = pid*3, r = cleanRgb[kk][c3], g = cleanRgb[kk][c3+1], b = cleanRgb[kk][c3+2];
+              if (!(Math.abs(r-ls[0])+Math.abs(g-ls[1])+Math.abs(b-ls[2]) < 115 && r > b + 8 && r > 110)) { isSkin = false; break; }
+            }
+          }
+          if (seen && isSkin) occSrc[id] = 0;
+        }
+      }
+    }
+  }
+
+  const N_TH = 64, phis = linspace(-Math.PI, Math.PI, N_TH, false), sinP = Array.from(phis, Math.sin), cosP = Array.from(phis, Math.cos);
+  const zAxisY = gy.map((y) => interp1D(y, [0.25*H, 0.58*H, yNeckTop], [czLegs, czTorso, czNeck]));
+  const rSteps = linspace(0.36, 0.02, 44, true), rRaw = new Float32Array(ny * N_TH);
+  for (let iy = 0; iy < ny; iy++) {
+    const zc = zAxisY[iy];
+    for (let k = 0; k < N_TH; k++) {
+      let rHit = 0;
+      for (let ri = 0; ri < 44; ri++) {
+        const rr = rSteps[ri], ix = Math.round((rr*sinP[k]+halfX)/dx - 0.5), iz = Math.round((zc+rr*cosP[k]+halfZ)/dz - 0.5);
+        if (ix >= 0 && ix < nx && iz >= 0 && iz < nz && occSrc[fIdx(ix, iy, iz)]) { rHit = rr; break; }
+      }
+      rRaw[iy * N_TH + k] = rHit;
+    }
+  }
+
+  const iyWaist = clip(Math.round((0.55*H)/dy), 0, ny-1), iyMinHem = clip(Math.round((0.20*H)/dy), 0, ny-1);
+  const iyGapMax = clip(Math.round(Math.min(0.47*H, legGapTop+0.020)/dy), iyMinHem, iyWaist);
+  let yHem = new Float32Array(N_TH);
+  for (let k = 0; k < N_TH; k++) {
+    let lastV = iyWaist, missR = 0;
+    for (let iy = iyWaist; iy >= iyMinHem; iy--) { if (rRaw[iy*N_TH+k] > 0.055) { lastV = iy; missR = 0; } else if (++missR >= 2) break; }
+    yHem[k] = gy[Math.min(lastV, iyGapMax)];
+  }
+  const q25 = percentile(yHem, 25), q50 = percentile(yHem, 50), q75 = percentile(yHem, 75);
+  if (Math.abs(q50 - legGapTop) < 0.080 && (q75 - q25) < 0.085) {
+    for (let k = 0; k < N_TH; k++) yHem[k] = clip(yHem[k], legGapTop - 0.020, legGapTop + 0.028);
+  }
+  for (let p = 0; p < 7; p++) {
+    const nxt = new Float32Array(N_TH); for (let k = 0; k < N_TH; k++) nxt[k] = 0.25*yHem[(k-1+N_TH)%N_TH]+0.5*yHem[k]+0.25*yHem[(k+1)%N_TH]; yHem = nxt;
+  }
+
+  const N_RINGS = 52, sWaist = 0.45, yGrid = new Float32Array(N_RINGS*N_TH), rGrid = new Float32Array(N_RINGS*N_TH);
+  for (let si = 0; si < N_RINGS; si++) {
+    const sv = si / (N_RINGS - 1), rFl = sv < 0.88 ? 0.055 : neckR * 0.90;
+    for (let k = 0; k < N_TH; k++) {
+      const yr = sv >= sWaist ? 0.55*H + ((sv-sWaist)/(1-sWaist))*(yNeckTop - 0.55*H) : yHem[k] + (sv/sWaist)*(0.55*H - yHem[k]);
+      yGrid[si*N_TH+k] = yr; const fIy = clip(yr/dy - 0.5, 0, ny - 1.001), iy0 = Math.floor(fIy), fy = fIy - iy0;
+      rGrid[si*N_TH+k] = Math.max((1-fy)*rRaw[iy0*N_TH+k] + fy*rRaw[(iy0+1)*N_TH+k], rFl);
+    }
+  }
+  for (let k = 0; k < N_TH; k++) { rGrid[(N_RINGS-1)*N_TH+k] = neckR*0.88; rGrid[(N_RINGS-2)*N_TH+k] = 0.5*rGrid[(N_RINGS-2)*N_TH+k]+0.5*(neckR*1.02); }
+  for (let p=0; p<3; p++) { const nxR = new Float32Array(N_RINGS*N_TH); for (let si=0; si<N_RINGS; si++) for (let k=0; k<N_TH; k++) nxR[si*N_TH+k]=0.25*rGrid[si*N_TH+((k-1+N_TH)%N_TH)]+0.5*rGrid[si*N_TH+k]+0.25*rGrid[si*N_TH+((k+1)%N_TH)]; rGrid.set(nxR); }
+  for (let p=0; p<3; p++) { const nxR = Float32Array.from(rGrid); for (let si=1; si<N_RINGS-1; si++) for (let k=0; k<N_TH; k++) nxR[si*N_TH+k]=0.25*rGrid[(si-1)*N_TH+k]+0.5*rGrid[si*N_TH+k]+0.25*rGrid[(si+1)*N_TH+k]; rGrid.set(nxR); }
+  for (let k = 0; k < N_TH; k++) rGrid[(N_RINGS-1)*N_TH+k] = neckR*0.88;
+
+  const N_TOT_R = N_RINGS + 2, phisW = linspace(-Math.PI, Math.PI, N_TH + 1, true), sinPW = Array.from(phisW, Math.sin), cosPW = Array.from(phisW, Math.cos);
+  const pad = 10 / TEX_SZ, rings = [], vVals = new Float32Array(N_TOT_R), tagRings = new Int32Array(N_TOT_R);
+  for (let ri = 0; ri < N_TOT_R; ri++) {
+    const rArr = new Float32Array((N_TH + 1) * 3);
+    for (let k = 0; k <= N_TH; k++) {
+      const kk = k % N_TH; let rr, yw;
+      if (ri === 0) { rr = rGrid[kk] * 0.82; yw = yGrid[kk] + 0.026; }
+      else if (ri === 1) { rr = rGrid[kk] * 0.95; yw = yGrid[kk] + 0.005; }
+      else { rr = rGrid[(ri - 2)*N_TH + kk]; yw = yGrid[(ri - 2)*N_TH + kk]; }
+      const zcW = interp1D(yw, [0.25*H, 0.58*H, yNeckTop], [czLegs, czTorso, czNeck]);
+      rArr[k*3] = rr*sinPW[k]; rArr[k*3+1] = yw; rArr[k*3+2] = zcW + rr*cosPW[k];
+    }
+    rings.push(rArr);
+    if (ri < 2) { vVals[ri] = 0.98 - (ri / 2) * 0.08; tagRings[ri] = 3; }
+    else { vVals[ri] = pad + (1 - (ri - 2) / (N_RINGS - 1)) * (0.90 - pad); tagRings[ri] = 0; }
+  }
+  const uVals = phisW.map((p) => pad + (0.5 + 0.5*(p/Math.PI))*(1 - 2*pad));
+  const sh = buildLoftShell(rings, uVals, vVals, false, true, 5), vTags = new Int32Array(sh.verts.length / 3);
+  for (let ri = 0; ri < N_TOT_R; ri++) vTags.fill(tagRings[ri], ri * (N_TH + 1), (ri + 1) * (N_TH + 1));
+
+  const occTorsoFit = new Uint8Array(nx * ny * nz), rCol = new Float32Array(N_RINGS), yCol = new Float32Array(N_RINGS);
+  for (let ix=0; ix<nx; ix++) for (let iz=0; iz<nz; iz++) for (let iy=0; iy<ny; iy++) {
+    const vy = gy[iy]; if (vy > yNeckTop + 0.01) continue;
+    const dzv = gz[iz] - zAxisY[iy], rad = Math.hypot(gx[ix], dzv), k = clip(Math.round(((Math.atan2(gx[ix], dzv)+Math.PI)/(2*Math.PI))*N_TH), 0, N_TH - 1);
+    if (vy < yHem[k] - 0.01) continue;
+    for (let si=0; si<N_RINGS; si++) { yCol[si] = yGrid[si*N_TH+k]; rCol[si] = rGrid[si*N_TH+k]; }
+    if (rad <= interp1D(vy, yCol, rCol, 0, neckR) + 0.015) occTorsoFit[fIdx(ix, iy, iz)] = 1;
+  }
+  return { verts: sh.verts, tris: sh.tris, uv: sh.uv, normals: computeVertexNormals(sh.verts, sh.tris), partTag: vTags, occTorsoFit, yHem };
+}
+
+function dilate3d(occ, nx, ny, nz, r = 1) {
+  let cur = occ; const fIdx = (x,y,z)=>(x*ny+y)*nz+z;
+  for (let p = 0; p < r; p++) {
+    const nxt = Uint8Array.from(cur);
+    for (let x=0; x<nx; x++) for (let y=0; y<ny; y++) for (let z=0; z<nz; z++) if (cur[fIdx(x,y,z)]) {
+      for (let ox=-1; ox<=1; ox++) { const xx=x+ox; if (xx<0||xx>=nx) continue;
+        for (let oy=-1; oy<=1; oy++) { const yy=y+oy; if (yy<0||yy>=ny) continue;
+          for (let oz=-1; oz<=1; oz++) { const zz=z+oz; if (zz>=0&&zz<nz) nxt[fIdx(xx,yy,zz)]=1; } } }
+    }
+    cur = nxt;
+  }
+  return cur;
+}
+function keepConnected3dComponents(seed, nx, ny, nz, minVox, minYIdx = null) {
+  const fIdx = (x,y,z)=>(x*ny+y)*nz+z, vis = new Uint8Array(nx*ny*nz), out = new Uint8Array(nx*ny*nz), stX=[], stY=[], stZ=[];
+  const dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  for (let x=0; x<nx; x++) for (let y=0; y<ny; y++) for (let z=0; z<nz; z++) {
+    const s = fIdx(x,y,z); if (!seed[s] || vis[s]) continue;
+    vis[s]=1; stX.push(x); stY.push(y); stZ.push(z); const comp=[]; let yHi=y;
+    while (stX.length) {
+      const cx=stX.pop(), cy=stY.pop(), cz=stZ.pop(); comp.push(fIdx(cx,cy,cz)); if (cy>yHi) yHi=cy;
+      for (const [ox,oy,oz] of dirs) { const xx=cx+ox, yy=cy+oy, zz=cz+oz; if (xx>=0&&xx<nx&&yy>=0&&yy<ny&&zz>=0&&zz<nz) { const id=fIdx(xx,yy,zz); if (seed[id]&&!vis[id]) { vis[id]=1; stX.push(xx); stY.push(yy); stZ.push(zz); } } }
+    }
+    if (comp.length >= minVox && (minYIdx === null || yHi >= minYIdx)) for (const id of comp) out[id] = 1;
+  }
+  return out;
+}
+function buildSurfaceNetsMesh(occ, nx, ny, nz, dx, dy, dz, halfX, halfZ) {
+  let anyO = false; for (let i=0; i<occ.length; i++) if (occ[i]) { anyO=true; break; }
+  if (!anyO) return { verts: new Float32Array(0), tris: new Int32Array(0) };
+  const px=nx+2, py=ny+2, pz=nz+2, pIdx=(x,y,z)=>(x*py+y)*pz+z; let phi = new Float32Array(px*py*pz);
+  for (let x=0; x<nx; x++) for (let y=0; y<ny; y++) for (let z=0; z<nz; z++) phi[pIdx(x+1,y+1,z+1)] = occ[(x*ny+y)*nz+z] ? 1 : 0;
+  for (let pass=0; pass<2; pass++) {
+    let nxt = new Float32Array(phi.length);
+    for (let x=0;x<px;x++) for (let y=0;y<py;y++) for (let z=0;z<pz;z++) nxt[pIdx(x,y,z)]=0.25*(x>0?phi[pIdx(x-1,y,z)]:0)+0.5*phi[pIdx(x,y,z)]+0.25*(x+1<px?phi[pIdx(x+1,y,z)]:0);
+    phi=nxt; nxt=new Float32Array(phi.length);
+    for (let x=0;x<px;x++) for (let y=0;y<py;y++) for (let z=0;z<pz;z++) nxt[pIdx(x,y,z)]=0.25*(y>0?phi[pIdx(x,y-1,z)]:0)+0.5*phi[pIdx(x,y,z)]+0.25*(y+1<py?phi[pIdx(x,y+1,z)]:0);
+    phi=nxt; nxt=new Float32Array(phi.length);
+    for (let x=0;x<px;x++) for (let y=0;y<py;y++) for (let z=0;z<pz;z++) nxt[pIdx(x,y,z)]=0.25*(z>0?phi[pIdx(x,y,z-1)]:0)+0.5*phi[pIdx(x,y,z)]+0.25*(z+1<pz?phi[pIdx(x,y,z+1)]:0);
+    phi=nxt;
+  }
+  const solid = new Uint8Array(phi.length); for (let i=0; i<phi.length; i++) if (phi[i]>=0.5) solid[i]=1;
+  const cxN=px-1, cyN=py-1, czN=pz-1, cIdx=(x,y,z)=>(x*cyN+y)*czN+z, cellToVid = new Int32Array(cxN*cyN*czN).fill(-1), vList=[];
+  const edges = [[[0,0,0],[1,0,0]],[[0,1,0],[1,1,0]],[[0,0,1],[1,0,1]],[[0,1,1],[1,1,1]],[[0,0,0],[0,1,0]],[[1,0,0],[1,1,0]],[[0,0,1],[0,1,1]],[[1,0,1],[1,1,1]],[[0,0,0],[0,0,1]],[[1,0,0],[1,0,1]],[[0,1,0],[0,1,1]],[[1,1,0],[1,1,1]]];
+  for (let x=0; x<cxN; x++) for (let y=0; y<cyN; y++) for (let z=0; z<czN; z++) {
+    let anyS=0, allS=1; for (let ox=0;ox<2;ox++) for (let oy=0;oy<2;oy++) for (let oz=0;oz<2;oz++) { const s=solid[pIdx(x+ox,y+oy,z+oz)]; anyS|=s; allS&=s; }
+    if (!anyS||allS) continue; let sx=0, sy=0, sz=0, ec=0;
+    for (const [e0,e1] of edges) {
+      const p0=pIdx(x+e0[0],y+e0[1],z+e0[2]), p1=pIdx(x+e1[0],y+e1[1],z+e1[2]); if (solid[p0]===solid[p1]) continue;
+      const v0=phi[p0], v1=phi[p1], t=clip(Math.abs(v1-v0)>1e-6?(0.5-v0)/(v1-v0):0.5,0,1);
+      sx+=x+lerp(e0[0],e1[0],t); sy+=y+lerp(e0[1],e1[1],t); sz+=z+lerp(e0[2],e1[2],t); ec++;
+    }
+    cellToVid[cIdx(x,y,z)]=vList.length/3; const d=Math.max(1,ec); vList.push(-halfX+(sx/d-0.5)*dx, (sy/d-0.5)*dy, -halfZ+(sz/d-0.5)*dz);
+  }
+  const triList=[], emit=(v00,v10,v11,v01,fwd)=>{ if(fwd) triList.push(v00,v10,v11,v00,v11,v01); else triList.push(v00,v11,v10,v00,v01,v11); };
+  for (let x=0;x<cxN;x++) for (let y=1;y<cyN;y++) for (let z=1;z<czN;z++) { const s0=solid[pIdx(x,y,z)], s1=solid[pIdx(x+1,y,z)]; if(s0!==s1) emit(cellToVid[cIdx(x,y-1,z-1)],cellToVid[cIdx(x,y,z-1)],cellToVid[cIdx(x,y,z)],cellToVid[cIdx(x,y-1,z)],!!s0); }
+  for (let x=1;x<cxN;x++) for (let y=0;y<cyN;y++) for (let z=1;z<czN;z++) { const s0=solid[pIdx(x,y,z)], s1=solid[pIdx(x,y+1,z)]; if(s0!==s1) emit(cellToVid[cIdx(x-1,y,z-1)],cellToVid[cIdx(x-1,y,z)],cellToVid[cIdx(x,y,z)],cellToVid[cIdx(x,y,z-1)],!!s0); }
+  for (let x=1;x<cxN;x++) for (let y=1;y<cyN;y++) for (let z=0;z<czN;z++) { const s0=solid[pIdx(x,y,z)], s1=solid[pIdx(x,y,z+1)]; if(s0!==s1) emit(cellToVid[cIdx(x-1,y-1,z)],cellToVid[cIdx(x,y-1,z)],cellToVid[cIdx(x,y,z)],cellToVid[cIdx(x-1,y,z)],!!s0); }
+  return { verts: new Float32Array(vList), tris: new Int32Array(triList) };
+}
+function keepLargeComponentsFrac(verts, tris, minTris = 120, minFrac = 0.06) {
+  const N = verts.length / 3; if (tris.length / 3 < 10) return { verts: new Float32Array(0), tris: new Int32Array(0) };
+  const adj = Array.from({ length: N }, () => []); for (let i=0; i<tris.length; i+=3) { const a=tris[i],b=tris[i+1],c=tris[i+2]; adj[a].push(b,c); adj[b].push(a,c); adj[c].push(a,b); }
+  const comp = new Int32Array(N).fill(-1), sizes = [];
+  for (let s=0; s<N; s++) {
+    if (comp[s]>=0||!adj[s].length) continue; const cid=sizes.length, st=[s]; comp[s]=cid; let sz=0;
+    while(st.length) { const u=st.pop(); sz++; for(const w of adj[u]) if(comp[w]<0){comp[w]=cid; st.push(w);} } sizes.push(sz);
+  }
+  const minSz = Math.max(minTris >> 1, Math.floor(N * minFrac)), keepC = new Set(sizes.map((s,i)=>s>=minSz?i:-1).filter((i)=>i>=0));
+  if (!keepC.size) return { verts: new Float32Array(0), tris: new Int32Array(0) };
+  const keepT = []; for (let i=0; i<tris.length; i+=3) if (keepC.has(comp[tris[i]])) keepT.push(tris[i], tris[i+1], tris[i+2]);
+  if (keepT.length / 3 < 16) return { verts: new Float32Array(0), tris: new Int32Array(0) };
+  const mapV = new Int32Array(N).fill(-1), nV = [], nT = new Int32Array(keepT.length);
+  for (let i=0; i<keepT.length; i++) { const o=keepT[i]; if(mapV[o]<0){mapV[o]=nV.length/3; nV.push(verts[o*3],verts[o*3+1],verts[o*3+2]);} nT[i]=mapV[o]; }
+  return { verts: new Float32Array(nV), tris: nT };
+}
+function taubinSmooth(verts, tris, passes = 5, lam = 0.46, mu = -0.48) {
+  const N = verts.length / 3; if (!N || !tris.length) return verts;
+  const nbrs = Array.from({ length: N }, () => new Set()); for (let i=0;i<tris.length;i+=3){const a=tris[i],b=tris[i+1],c=tris[i+2];nbrs[a].add(b).add(c);nbrs[b].add(a).add(c);nbrs[c].add(a).add(b);}
+  const cur = Float32Array.from(verts), nxt = new Float32Array(verts.length);
+  for (let p=0; p<passes; p++) for (const w of [lam, mu]) {
+    for (let i=0; i<N; i++) {
+      const s=nbrs[i]; if(!s.size){nxt[i*3]=cur[i*3];nxt[i*3+1]=cur[i*3+1];nxt[i*3+2]=cur[i*3+2];continue;}
+      let sx=0,sy=0,sz=0; for(const j of s){sx+=cur[j*3];sy+=cur[j*3+1];sz+=cur[j*3+2];} const inv=1/s.size;
+      nxt[i*3]=cur[i*3]+w*(sx*inv-cur[i*3]); nxt[i*3+1]=cur[i*3+1]+w*(sy*inv-cur[i*3+1]); nxt[i*3+2]=cur[i*3+2]+w*(sz*inv-cur[i*3+2]);
+    }
+    cur.set(nxt);
+  }
+  return cur;
+}
+function unwrapBox6Uv(verts, normals, tris) {
+  if (!verts.length || !tris.length) return null;
+  const nT = tris.length / 3, pairMap = new Map(), mTris = new Int32Array(tris.length), origV = [], vcid = [];
+  for (let ti=0; ti<nT; ti++) {
+    const a=tris[ti*3],b=tris[ti*3+1],c=tris[ti*3+2];
+    const e1x=verts[b*3]-verts[a*3],e1y=verts[b*3+1]-verts[a*3+1],e1z=verts[b*3+2]-verts[a*3+2], e2x=verts[c*3]-verts[a*3],e2y=verts[c*3+1]-verts[a*3+1],e2z=verts[c*3+2]-verts[a*3+2];
+    const fx=e1y*e2z-e1z*e2y, fy=e1z*e2x-e1x*e2z, fz=e1x*e2y-e1y*e2x, ax=Math.abs(fx), ay=Math.abs(fy), az=Math.abs(fz);
+    const k = (az>=ax&&az>=ay)?(fz>=0?0:1):(ax>=ay?(fx>=0?2:3):(fy>=0?4:5));
+    for (let j=0;j<3;j++){ const ov=tris[ti*3+j], key=ov*6+k; let nv=pairMap.get(key); if(nv===undefined){nv=origV.length;pairMap.set(key,nv);origV.push(ov);vcid.push(k);} mTris[ti*3+j]=nv; }
+  }
+  const N = origV.length, mVerts = new Float32Array(N*3), mNorms = new Float32Array(N*3), mUv = new Float32Array(N*2);
+  let xmin=1e9,xmax=-1e9,ymin=1e9,ymax=-1e9,zmin=1e9,zmax=-1e9;
+  for (let i=0;i<N;i++){
+    const o=origV[i],x=verts[o*3],y=verts[o*3+1],z=verts[o*3+2];
+    mVerts[i*3]=x;mVerts[i*3+1]=y;mVerts[i*3+2]=z;mNorms[i*3]=normals[o*3];mNorms[i*3+1]=normals[o*3+1];mNorms[i*3+2]=normals[o*3+2];
+    if(x<xmin)xmin=x;if(x>xmax)xmax=x;if(y<ymin)ymin=y;if(y>ymax)ymax=y;if(z<zmin)zmin=z;if(z>zmax)zmax=z;
+  }
+  xmin-=0.005;xmax+=0.005;ymin-=0.005;ymax+=0.005;zmin-=0.005;zmax+=0.005;
+  const dx=Math.max(0.05,xmax-xmin), dy=Math.max(0.05,ymax-ymin), dz=Math.max(0.05,zmax-zmin);
+  const rects=[[0,0,512,640],[512,0,1024,640],[0,640,256,1024],[256,640,512,1024],[512,640,768,1024],[768,640,1024,1024]], pad=8;
+  for (let i=0;i<N;i++){
+    const k=vcid[i],x=mVerts[i*3],y=mVerts[i*3+1],z=mVerts[i*3+2];
+    const [u,v] = k===0?[(x-xmin)/dx,(ymax-y)/dy]:k===1?[(xmax-x)/dx,(ymax-y)/dy]:k===2?[(zmax-z)/dz,(ymax-y)/dy]:k===3?[(z-zmin)/dz,(ymax-y)/dy]:k===4?[(x-xmin)/dx,(z-zmin)/dz]:[(x-xmin)/dx,(zmax-z)/dz];
+    const [r0,y0,r1,y1]=rects[k]; mUv[i*2]=(r0+pad+clip(u,0,1)*(r1-r0-2*pad))/TEX_SZ; mUv[i*2+1]=(y0+pad+clip(v,0,1)*(y1-y0-2*pad))/TEX_SZ;
+  }
+  return { verts: mVerts, normals: mNorms, uv: mUv, tris: mTris, partTag: new Int32Array(N) };
+}
+
+function carveColorConsistentHair(vol, occTorsoFit, fg, cleanRgb, calib, params) {
+  const { occVideo, gx, gy, gz, dx, dy, dz, nx, ny, nz } = vol, fIdx = (x,y,z)=>(x*ny+y)*nz+z;
+  const occCore = Uint8Array.from(occTorsoFit), headCy = params.yChin+0.5*params.headH, rxH = params.rxHead*1.04, rzH = params.rzHead*1.04, ryH = 0.52*params.headH;
+  const armExcl = new Uint8Array(nx*ny*nz);
+  for (let ix=0; ix<nx; ix++) for (let iy=0; iy<ny; iy++) for (let iz=0; iz<nz; iz++) {
+    const id=fIdx(ix,iy,iz), vx=gx[ix], vy=gy[iy], vz=gz[iz];
+    if (((vx-params.hcx)/rxH)**2 + ((vy-headCy)/ryH)**2 + ((vz-params.hcz)/rzH)**2 <= 1.08) occCore[id]=1;
+    else if (vy>=params.yNeckBase && vy<params.yChin && ((vx-params.hcx)**2+(vz-params.czNeck)**2)<=(params.neckR*1.15)**2) occCore[id]=1;
+    else if (params.isTpose && Math.abs(vx)>=params.shX && Math.abs(vx)<=params.armTipX+0.01 && Math.abs(vy-params.shoulderY)<0.06 && Math.abs(vz-params.czArm)<0.06) occCore[id]=1;
+    if (params.isTpose && Math.abs(vx)>params.shX+0.015 && Math.abs(vy-params.shoulderY)<0.14*params.H && vy<params.yChin-0.01) armExcl[id]=1;
+  }
+  const occCoreDil = dilate3d(occCore, nx, ny, nz, 1), { anchors, thetas, cxs, ybMed, pxPerM } = calib, iBack = anchors[1];
+  const yh0 = clip(Math.round(ybMed-(params.yCrown-0.03)*pxPerM),0,IMG_SZ-1), yh1 = clip(Math.round(ybMed-(params.yChin+0.04)*pxPerM),0,IMG_SZ-1);
+  const hVals=[], rgbB=cleanRgb[iBack], fgB=fg[iBack];
+  for (let y=Math.min(yh0,yh1); y<=Math.max(yh0,yh1); y++) for (let x=0; x<IMG_SZ; x++) { const p=y*IMG_SZ+x; if(fgB[p]) hVals.push((rgbB[p*3]+rgbB[p*3+1]+rgbB[p*3+2])/3); }
+  const isDarkHair = hVals.length > 20 && median(hVals) < 125;
+  const hairZone = new Uint8Array(nx*ny*nz), hairCand = new Uint8Array(nx*ny*nz), ct = Math.cos(thetas[iBack]), st = Math.sin(thetas[iBack]);
+  for (let ix=0; ix<nx; ix++) for (let iy=0; iy<ny; iy++) for (let iz=0; iz<nz; iz++) {
+    const id=fIdx(ix,iy,iz), vx=gx[ix], vy=gy[iy], vz=gz[iz];
+    const hz = (vy>=params.yChin-0.005) || (vy>=params.shoulderY-0.05*params.H && (((vz<params.czTorso-0.13)&&Math.abs(vx)<0.105)||(Math.abs(vx)>params.shX*0.85&&vy>params.shoulderY+0.025)));
+    if (!hz) continue; hairZone[id]=1;
+    const fClr = (vz>params.hcz+0.008)&&Math.abs(vx-params.hcx)<params.rxHead*0.92&&vy>=params.yNeckBase-0.02&&vy<=params.yCrown-0.02;
+    if (occVideo[id] && !occCoreDil[id] && !fClr && !armExcl[id]) {
+      let ok = true;
+      if (isDarkHair && vy < params.yChin - 0.005) {
+        const pxb=clip(Math.round(cxs[iBack]+(vx*ct+vz*st)*pxPerM),0,IMG_SZ-1), pyb=clip(Math.round(ybMed-vy*pxPerM),0,IMG_SZ-1), p3=(pyb*IMG_SZ+pxb)*3;
+        if (Math.min(rgbB[p3],rgbB[p3+1],rgbB[p3+2])>145 || (rgbB[p3]+rgbB[p3+1]+rgbB[p3+2])/3>165) ok=false;
+      }
+      if (ok) hairCand[id] = 1;
+    }
+  }
+  const hairSeed = keepConnected3dComponents(hairCand, nx, ny, nz, 120, Math.floor((params.yChin - 0.01) / dy));
+  let anyS = false; for (let i=0; i<hairSeed.length; i++) if (hairSeed[i]) { anyS=true; break; } if (!anyS) return null;
+  const dil2 = dilate3d(hairSeed, nx, ny, nz, 2), occHair = new Uint8Array(nx*ny*nz);
+  for (let ix=0; ix<nx; ix++) for (let iy=0; iy<ny; iy++) for (let iz=0; iz<nz; iz++) {
+    const id=fIdx(ix,iy,iz), fClr=(gz[iz]>params.hcz+0.008)&&Math.abs(gx[ix]-params.hcx)<params.rxHead*0.92&&gy[iy]>=params.yNeckBase-0.02&&gy[iy]<=params.yCrown-0.02;
+    if (dil2[id]&&occVideo[id]&&hairZone[id]&&!armExcl[id]&&!fClr) occHair[id]=1;
+  }
+  const dil1 = dilate3d(occHair, nx, ny, nz, 1);
+  for (let ix=0; ix<nx; ix++) for (let iy=0; iy<ny; iy++) for (let iz=0; iz<nz; iz++) {
+    const id=fIdx(ix,iy,iz), fClr=(gz[iz]>params.hcz+0.008)&&Math.abs(gx[ix]-params.hcx)<params.rxHead*0.92&&gy[iy]>=params.yNeckBase-0.02&&gy[iy]<=params.yCrown-0.02;
+    if (dil1[id]&&occVideo[id]&&!fClr&&gy[iy]>=params.yChin-0.005) occHair[id]=1;
+  }
+  const sn = buildSurfaceNetsMesh(occHair, nx, ny, nz, dx, dy, dz, calib.halfX, calib.halfZ), kc = keepLargeComponentsFrac(sn.verts, sn.tris, 120, 0.06);
+  if (kc.tris.length / 3 < 60) return null;
+  const smVerts = taubinSmooth(kc.verts, kc.tris, 5);
+  return unwrapBox6Uv(smVerts, computeVertexNormals(smVerts, kc.tris), kc.tris);
+}
+
+// ---------------------------------------------------------------------------
+// 5. Combined Scene Z-Buffer Baking with Vertical Shoulder & Pelvis Guards
+// ---------------------------------------------------------------------------
+function despeckleUvOutliers(tex, cov, thresh = 80) {
+  const out = Uint8Array.from(tex), offs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]], cand = [[],[],[]];
+  for (let y=1; y<TEX_SZ-1; y++) for (let x=1; x<TEX_SZ-1; x++) {
+    const i=y*TEX_SZ+x; if (!cov[i]) continue; let cnt=0;
+    for (const [dy,dx] of offs) { const j=(y+dy)*TEX_SZ+(x+dx); if (cov[j]) { cand[0][cnt]=tex[j*3]; cand[1][cnt]=tex[j*3+1]; cand[2][cnt]=tex[j*3+2]; cnt++; } }
+    if (cnt<5) continue; let diff=0; const med=[0,0,0];
+    for (let c=0; c<3; c++) { const s=cand[c].slice(0,cnt).sort((a,b)=>a-b); med[c]=s[(cnt-1)>>1]; diff+=Math.abs(tex[i*3+c]-med[c]); }
+    if (diff>thresh) { out[i*3]=med[0]; out[i*3+1]=med[1]; out[i*3+2]=med[2]; }
+  }
+  return out;
+}
+function dilateUvGutter(tex, cov, passes = 8) {
+  let out = Uint8Array.from(tex), valid = Uint8Array.from(cov); const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  for (let p=0; p<passes; p++) {
+    const nOut = Uint8Array.from(out), nVal = Uint8Array.from(valid);
+    for (let y=0; y<TEX_SZ; y++) for (let x=0; x<TEX_SZ; x++) {
+      const i=y*TEX_SZ+x; if (valid[i]) continue;
+      for (const [dy,dx] of dirs) { const ny=y+dy, nx=x+dx; if (ny>=0&&ny<TEX_SZ&&nx>=0&&nx<TEX_SZ) { const j=ny*TEX_SZ+nx; if (valid[j]) { nOut[i*3]=out[j*3]; nOut[i*3+1]=out[j*3+1]; nOut[i*3+2]=out[j*3+2]; nVal[i]=1; break; } } }
+    }
+    out = nOut; valid = nVal;
+  }
+  return out;
+}
+
+function bakeTextures(parts, fg, fgColor, cleanRgb, calib, params) {
+  const { thetas, cxs, ybMed, pxPerM } = calib, V = thetas.length, ZBUF = 360, zScale = ZBUF / IMG_SZ;
+  const frontZ = new Float32Array(V * ZBUF * ZBUF).fill(-1e9), zPtsList = [];
+  for (const pn of ["head", "torso", "body", "hair"]) {
+    const part = parts[pn]; if (!part || !part.tris.length) continue;
+    const vv = part.verts, tt = part.tris;
+    for (let i=0; i<vv.length; i+=3) zPtsList.push(vv[i], vv[i+1], vv[i+2]);
+    for (let i=0; i<tt.length; i+=3) {
+      const a=tt[i]*3, b=tt[i+1]*3, c=tt[i+2]*3;
+      zPtsList.push((vv[a]+vv[b]+vv[c])/3, (vv[a+1]+vv[b+1]+vv[c+1])/3, (vv[a+2]+vv[b+2]+vv[c+2])/3);
+      zPtsList.push(0.5*(vv[a]+vv[b]), 0.5*(vv[a+1]+vv[b+1]), 0.5*(vv[a+2]+vv[b+2]));
+      zPtsList.push(0.5*(vv[b]+vv[c]), 0.5*(vv[b+1]+vv[c+1]), 0.5*(vv[b+2]+vv[c+2]));
+      zPtsList.push(0.5*(vv[c]+vv[a]), 0.5*(vv[c+1]+vv[a+1]), 0.5*(vv[c+2]+vv[a+2]));
+    }
+  }
+  const nZp = zPtsList.length/3, zPts = new Float32Array(zPtsList), tmpBuf = new Float32Array(ZBUF*ZBUF);
+  for (let k=0; k<V; k++) {
+    const ct=Math.cos(thetas[k]), st=Math.sin(thetas[k]), cx=cxs[k], fOff=k*ZBUF*ZBUF; tmpBuf.fill(-1e9);
+    for (let i=0; i<nZp; i++) {
+      const uw=zPts[i*3]*ct+zPts[i*3+2]*st, zCam=-zPts[i*3]*st+zPts[i*3+2]*ct;
+      const pxb=clip(Math.round((cx+uw*pxPerM)*zScale),0,ZBUF-1), pyb=clip(Math.round((ybMed-zPts[i*3+1]*pxPerM)*zScale),0,ZBUF-1);
+      if (zCam > tmpBuf[pyb*ZBUF+pxb]) tmpBuf[pyb*ZBUF+pxb] = zCam;
+    }
+    for (let y=0; y<ZBUF; y++) for (let x=0; x<ZBUF; x++) {
+      let mx=-1e9; for (let dy=-1; dy<=1; dy++) { const yy=clip(y+dy,0,ZBUF-1); for (let dx=-1; dx<=1; dx++) { const v=tmpBuf[yy*ZBUF+clip(x+dx,0,ZBUF-1)]; if(v>mx) mx=v; } }
+      frontZ[fOff + y*ZBUF + x] = mx;
+    }
+  }
+
+  const cosV = new Float32Array(V), sinV = new Float32Array(V), atanV = new Float32Array(V), canonK = new Uint8Array(V);
+  for (let k=0; k<V; k++) { cosV[k]=Math.cos(thetas[k]); sinV[k]=Math.sin(thetas[k]); atanV[k]=Math.abs(Math.atan2(sinV[k],cosV[k])); }
+  for (const ta of [0, 0.25*Math.PI, 0.5*Math.PI, 0.75*Math.PI, Math.PI, 1.25*Math.PI, 1.5*Math.PI, 1.75*Math.PI]) {
+    let bk=0, bd=1e9; for (let k=0; k<V; k++) { const am=((thetas[k]%(2*Math.PI))+2*Math.PI)%(2*Math.PI), d=Math.min(Math.abs(am-ta),2*Math.PI-Math.abs(am-ta)); if(d<bd){bd=d;bk=k;} }
+    canonK[bk]=1;
+  }
+  let skirtHemRgb = [38, 42, 56];
+
+  for (const pname of ["head", "torso", "body", "hair"]) {
+    const part = parts[pname]; if (!part || !part.tris.length) continue;
+    const { verts: mv, normals: mn, uv: muv, tris: mt, partTag: mtags } = part;
+    const texPos = new Float32Array(TEX_SZ*TEX_SZ*3), texNrm = new Float32Array(TEX_SZ*TEX_SZ*3), texCov = new Uint8Array(TEX_SZ*TEX_SZ), texTag = new Int32Array(TEX_SZ*TEX_SZ);
+
+    for (let ti=0; ti<mt.length; ti+=3) {
+      const i0=mt[ti], i1=mt[ti+1], i2=mt[ti+2], u0=muv[i0*2]*TEX_SZ, v0=muv[i0*2+1]*TEX_SZ, u1=muv[i1*2]*TEX_SZ, v1=muv[i1*2+1]*TEX_SZ, u2=muv[i2*2]*TEX_SZ, v2=muv[i2*2+1]*TEX_SZ;
+      const area = (u1-u0)*(v2-v0)-(u2-u0)*(v1-v0); if (Math.abs(area)<=1e-5) continue;
+      const invA=1/area, tag=Math.max(mtags[i0],mtags[i1],mtags[i2]), x0=clip(Math.floor(Math.min(u0,u1,u2)),0,TEX_SZ-1), y0=clip(Math.floor(Math.min(v0,v1,v2)),0,TEX_SZ-1), x1=clip(Math.ceil(Math.max(u0,u1,u2)),0,TEX_SZ-1), y1=clip(Math.ceil(Math.max(v0,v1,v2)),0,TEX_SZ-1);
+      for (let ty=y0; ty<=y1; ty++) { const py=ty+0.5; for (let tx=x0; tx<=x1; tx++) {
+        const px=tx+0.5, w0=((u1-px)*(v2-py)-(u2-px)*(v1-py))*invA, w1=((u2-px)*(v0-py)-(u0-px)*(v2-py))*invA, w2=1-w0-w1;
+        if (w0<-0.02||w1<-0.02||w2<-0.02) continue;
+        let b0=clip(w0,0,1), b1=clip(w1,0,1), b2=clip(w2,0,1); const bs=Math.max(b0+b1+b2,1e-6); b0/=bs; b1/=bs; b2/=bs;
+        const id=ty*TEX_SZ+tx;
+        texPos[id*3]=b0*mv[i0*3]+b1*mv[i1*3]+b2*mv[i2*3]; texPos[id*3+1]=b0*mv[i0*3+1]+b1*mv[i1*3+1]+b2*mv[i2*3+1]; texPos[id*3+2]=b0*mv[i0*3+2]+b1*mv[i1*3+2]+b2*mv[i2*3+2];
+        const nx=b0*mn[i0*3]+b1*mn[i1*3]+b2*mn[i2*3], ny=b0*mn[i0*3+1]+b1*mn[i1*3+1]+b2*mn[i2*3+1], nz=b0*mn[i0*3+2]+b1*mn[i1*3+2]+b2*mn[i2*3+2], nl=Math.max(Math.hypot(nx,ny,nz),1e-6);
+        texNrm[id*3]=nx/nl; texNrm[id*3+1]=ny/nl; texNrm[id*3+2]=nz/nl; texCov[id]=1; texTag[id]=tag;
+      }}
+    }
+
+    const covIdx = []; for (let i=0; i<TEX_SZ*TEX_SZ; i++) if (texCov[i]) covIdx.push(i);
+    const Nt = covIdx.length; if (!Nt) { part.tex = new Uint8Array(TEX_SZ*TEX_SZ*3).fill(140); continue; }
+    const isHead=pname==="head", isBody=pname==="body", isTorso=pname==="torso", isHair=pname==="hair";
+    const czRef = isHead ? params.hcz : params.czTorso, unoccTol = isHead ? -0.024 : (isHair ? -0.012 : -0.015);
+    const hasWta = new Uint8Array(Nt), sampled = new Float32Array(Nt*3), scRow = new Float32Array(V), rgbRow = new Float32Array(V*3), hemR=[], hemG=[], hemB=[];
+
+    for (let ni=0; ni<Nt; ni++) {
+      const id=covIdx[ni], px=texPos[id*3], py=texPos[id*3+1], pz=texPos[id*3+2], nrmX=texNrm[id*3], nrmY=texNrm[id*3+1], nrmZ=texNrm[id*3+2], tag=texTag[id];
+      const nhRaw=Math.hypot(nrmX, nrmZ), useFwd=nhRaw<0.14, nhx=useFwd?0:nrmX/Math.max(nhRaw,1e-4), nhz=useFwd?clip((pz-czRef)/0.025,-1,1):nrmZ/Math.max(nhRaw,1e-4);
+      const frontDome = clip((nhz-0.15)/0.55, 0, 1); let fbW=0, fbR=0, fbG=0, fbB=0, bestSc=-1;
+      for (let k=0; k<V; k++) {
+        const ct=cosV[k], st=sinV[k], facing=useFwd?(0.55*Math.abs(ct)+0.45*(pz>=czRef?Math.max(ct,0):Math.max(-ct,0))):(-nhx*st+nhz*ct);
+        const uw=px*ct+pz*st, zCam=-px*st+pz*ct, pxf=cxs[k]+uw*pxPerM, pyf=ybMed-py*pxPerM, px0=Math.floor(pxf), py0=Math.floor(pyf);
+        const inImg = px0>=0 && px0<IMG_SZ-1 && py0>=0 && py0<IMG_SZ-1, pxn=clip(Math.round(pxf),0,IMG_SZ-1), pyn=clip(Math.round(pyf),0,IMG_SZ-1);
+        const colorOk = inImg && fgColor[k][pyn*IMG_SZ+pxn], fgOk = inImg && fg[k][pyn*IMG_SZ+pxn];
+        const pxb=clip(Math.round(pxf*zScale),0,ZBUF-1), pyb=clip(Math.round(pyf*zScale),0,ZBUF-1), unocc = zCam >= (frontZ[(k*ZBUF+pyb)*ZBUF+pxb] + unoccTol);
+        const p0c=clip(px0,0,IMG_SZ-2), q0c=clip(py0,0,IMG_SZ-2), fx=clip(pxf-p0c,0,1), fy=clip(pyf-q0c,0,1), imk=cleanRgb[k], a=(q0c*IMG_SZ+p0c)*3, c=a+IMG_SZ*3;
+        for (let ch=0; ch<3; ch++) rgbRow[k*3+ch]=(1-fy)*((1-fx)*imk[a+ch]+fx*imk[a+3+ch])+fy*((1-fx)*imk[c+ch]+fx*imk[c+3+ch]);
+        if (fgOk) { const wfb=Math.max(facing,0.04)*(unocc?1:0.15); fbW+=wfb; fbR+=rgbRow[k*3]*wfb; fbG+=rgbRow[k*3+1]*wfb; fbB+=rgbRow[k*3+2]*wfb; }
+        const cb = canonK[k] ? 0.07 : 0; let sc = -1;
+        if (isHead) { if (colorOk&&unocc&&facing>0.28) sc=facing+cb+0.52*frontDome*Math.max(0,1-atanV[k]/0.40)-frontDome*(nhz>0.15?0.75*clip((k-0.58*V)/Math.max(1,0.25*V),0,1):0); }
+        else if (colorOk&&unocc&&facing>0.30) sc=facing+cb-frontDome*(0.22*Math.max(0,(k-(V-6))/5));
+        scRow[k]=sc; if (sc>bestSc) bestSc=sc;
+      }
+      let keepWta = bestSc > 0;
+      if (isTorso && (nrmY > 0.62 || tag === 3)) keepWta = false;
+      if (isHair && nrmY < -0.45) keepWta = false;
+      hasWta[ni] = keepWta ? 1 : 0;
+      if (keepWta) {
+        const cw = isHead?(frontDome>0.35?0.055:0.12):0.065, sw = isHead?(frontDome>0.35?0.024:0.048):0.028; let ws=0, sr=0, sg=0, sb=0;
+        for (let k=0; k<V; k++) if (scRow[k]>0 && scRow[k]>=bestSc-cw) { const w=Math.exp(-((Math.max(0,bestSc-scRow[k])/sw)**2)); ws+=w; sr+=w*rgbRow[k*3]; sg+=w*rgbRow[k*3+1]; sb+=w*rgbRow[k*3+2]; }
+        ws = Math.max(ws, 1e-6); sampled[ni*3]=clip(sr/ws,0,255); sampled[ni*3+1]=clip(sg/ws,0,255); sampled[ni*3+2]=clip(sb/ws,0,255);
+        if (isTorso && py < 0.48*params.H) { hemR.push(sampled[ni*3]); hemG.push(sampled[ni*3+1]); hemB.push(sampled[ni*3+2]); }
+      } else if (fbW > 0) { sampled[ni*3]=clip(fbR/fbW,0,255); sampled[ni*3+1]=clip(fbG/fbW,0,255); sampled[ni*3+2]=clip(fbB/fbW,0,255); }
+      else { sampled[ni*3]=140; sampled[ni*3+1]=140; sampled[ni*3+2]=140; }
+    }
+    if (isTorso && hemR.length) skirtHemRgb = [median(hemR), median(hemG), median(hemB)];
+
+    if (isHair) {
+      const hR=[], hG=[], hB=[], aR=[], aG=[], aB=[];
+      for (let ni=0; ni<Nt; ni++) if (hasWta[ni]) {
+        aR.push(sampled[ni*3]); aG.push(sampled[ni*3+1]); aB.push(sampled[ni*3+2]);
+        if (texPos[covIdx[ni]*3+1] > params.yChin+0.01) { hR.push(sampled[ni*3]); hG.push(sampled[ni*3+1]); hB.push(sampled[ni*3+2]); }
+      }
+      if (hR.length >= 20) {
+        const upM = [median(hR), median(hG), median(hB)];
+        if ((upM[0]+upM[1]+upM[2])/3 < 125) for (let ni=0; ni<Nt; ni++) if (texPos[covIdx[ni]*3+1] <= params.yChin+0.01) {
+          const r=sampled[ni*3], g=sampled[ni*3+1], b=sampled[ni*3+2]; if (Math.min(r,g,b)>135 || (r+g+b)/3>155) { sampled[ni*3]=upM[0]; sampled[ni*3+1]=upM[1]; sampled[ni*3+2]=upM[2]; }
+        }
+      }
+      if (aR.length) {
+        const allM = [median(aR), median(aG), median(aB)];
+        for (let ni=0; ni<Nt; ni++) {
+          const id=covIdx[ni]; if (texNrm[id*3+1] < -0.45) {
+            const x = id % TEX_SZ, y = (id / TEX_SZ) | 0, st = 0.94 + 0.08 * Math.sin(x * 0.45 + y * 0.25);
+            for (let c=0; c<3; c++) sampled[ni*3+c] = clip(allM[c] * 0.78 * st, 0, 255); hasWta[ni] = 1;
+          }
+        }
+      }
+    }
+
+    if (isBody) {
+      const armToWrist = params.wristX - params.shX;
+      for (const hTag of [1, 2]) {
+        const sgnH = hTag===1?1:-1, rotA = params.isTpose?0:(-(hTag===1?params.alphaL:params.alphaR)*sgnH), dirX = sgnH*Math.cos(rotA), dirY = sgnH*Math.sin(rotA);
+        const pR1=[], pG1=[], pB1=[], pR2=[], pG2=[], pB2=[], pR3=[], pG3=[], pB3=[], dfMap = new Float32Array(Nt); let anyH = false;
+        for (let ni=0; ni<Nt; ni++) {
+          const id=covIdx[ni]; if (texTag[id]!==hTag) continue; anyH=true;
+          const df = clip((((texPos[id*3]-sgnH*params.shX)*dirX+(texPos[id*3+1]-params.shoulderY)*dirY) - armToWrist)/Math.max(0.05,params.handLen), 0, 1); dfMap[ni]=df;
+          if (hasWta[ni]) {
+            if (df>=0.30&&df<=0.85&&texNrm[id*3+1]>0.05){pR1.push(sampled[ni*3]);pG1.push(sampled[ni*3+1]);pB1.push(sampled[ni*3+2]);}
+            if (df>=0.22){pR2.push(sampled[ni*3]);pG2.push(sampled[ni*3+1]);pB2.push(sampled[ni*3+2]);}
+            pR3.push(sampled[ni*3]);pG3.push(sampled[ni*3+1]);pB3.push(sampled[ni*3+2]);
+          }
+        }
+        if (!anyH) continue;
+        const pRgb = pR1.length>=12?[median(pR1),median(pG1),median(pB1)]:(pR2.length>=8?[median(pR2),median(pG2),median(pB2)]:(pR3.length?[median(pR3),median(pG3),median(pB3)]:[240,212,194]));
+        for (let ni=0; ni<Nt; ni++) {
+          const id=covIdx[ni]; if (texTag[id]!==hTag) continue;
+          const cr = 0.93+0.07*clip(0.5+0.5*texNrm[id*3+1],0,1), l1 = Math.abs(sampled[ni*3]-pRgb[0])+Math.abs(sampled[ni*3+1]-pRgb[1])+Math.abs(sampled[ni*3+2]-pRgb[2]);
+          const wk = (hasWta[ni] && l1 <= 55) ? 0.38*(1 - dfMap[ni]) : 0;
+          for (let c=0; c<3; c++) sampled[ni*3+c] = wk*sampled[ni*3+c] + (1-wk)*(pRgb[c]*cr);
+        }
+      }
+      const pCol = [Math.min(skirtHemRgb[0]*0.45, 46), Math.min(skirtHemRgb[1]*0.45, 50), Math.min(skirtHemRgb[2]*0.45, 62)];
+      for (let ni=0; ni<Nt; ni++) {
+        const id=covIdx[ni]; if (texTag[id]===4) {
+          const sh = 0.86 + 0.14*clip(0.5+0.5*texNrm[id*3+1], 0, 1);
+          for (let c=0; c<3; c++) sampled[ni*3+c] = clip(pCol[c]*sh, 0, 255); hasWta[ni]=1;
+        }
+      }
+      const sR=[], sG=[], sB=[];
+      for (let ni=0; ni<Nt; ni++) { const id=covIdx[ni], py=texPos[id*3+1]; if (texTag[id]===0&&hasWta[ni]&&py>0.20*params.H&&py<0.34*params.H){sR.push(sampled[ni*3]);sG.push(sampled[ni*3+1]);sB.push(sampled[ni*3+2]);} }
+      if (sR.length) {
+        const sM=[median(sR),median(sG),median(sB)];
+        for (let ni=0; ni<Nt; ni++) { const id=covIdx[ni], py=texPos[id*3+1]; if (texTag[id]===0&&!hasWta[ni]&&py<0.48*params.H&&py>0.22*params.H) { sampled[ni*3]=sM[0]; sampled[ni*3+1]=sM[1]; sampled[ni*3+2]=sM[2]; } }
+      }
+    }
+
+    let texImg = new Uint8Array(TEX_SZ * TEX_SZ * 3);
+    const validWta = new Uint8Array(TEX_SZ*TEX_SZ), needInp = new Uint8Array(TEX_SZ*TEX_SZ);
+    const linCol = [clip(Math.round(skirtHemRgb[0]*0.52),0,255), clip(Math.round(skirtHemRgb[1]*0.52),0,255), clip(Math.round(skirtHemRgb[2]*0.52),0,255)];
+    let anyMiss = false;
+    for (let ni=0; ni<Nt; ni++) {
+      const id=covIdx[ni]; texImg[id*3]=clip(Math.round(sampled[ni*3]),0,255); texImg[id*3+1]=clip(Math.round(sampled[ni*3+1]),0,255); texImg[id*3+2]=clip(Math.round(sampled[ni*3+2]),0,255);
+      if (hasWta[ni]) validWta[id]=1;
+      else if (isTorso && texTag[id]===3) { texImg[id*3]=linCol[0]; texImg[id*3+1]=linCol[1]; texImg[id*3+2]=linCol[2]; validWta[id]=1; }
+      else if (!(isBody && texTag[id]>0)) { needInp[id]=1; anyMiss=true; }
+    }
+    if (anyMiss) {
+      if (isTorso) {
+        for (let y=0; y<TEX_SZ; y++) for (let x=0; x<TEX_SZ; x++) {
+          const id=y*TEX_SZ+x; if (!needInp[id]) continue; let fd=false;
+          for (let d=1; d<=64; d++) if (y+d<TEX_SZ && validWta[(y+d)*TEX_SZ+x]) { const j=(y+d)*TEX_SZ+x; texImg[id*3]=texImg[j*3]; texImg[id*3+1]=texImg[j*3+1]; texImg[id*3+2]=texImg[j*3+2]; validWta[id]=1; needInp[id]=0; fd=true; break; }
+          if (!fd) for (let d=1; d<=64; d++) if (y-d>=0 && validWta[(y-d)*TEX_SZ+x]) { const j=(y-d)*TEX_SZ+x; texImg[id*3]=texImg[j*3]; texImg[id*3+1]=texImg[j*3+1]; texImg[id*3+2]=texImg[j*3+2]; validWta[id]=1; needInp[id]=0; break; }
+        }
+      }
+      const hRad = isTorso ? 8 : 64;
+      for (let y=0; y<TEX_SZ; y++) for (let x=0; x<TEX_SZ; x++) {
+        const id=y*TEX_SZ+x; if (!needInp[id]) continue; let lx=-1, rx=-1;
+        for (let d=1; d<=hRad; d++) { if(lx<0&&x-d>=0&&validWta[y*TEX_SZ+x-d]) lx=x-d; if(rx<0&&x+d<TEX_SZ&&validWta[y*TEX_SZ+x+d]) rx=x+d; if(lx>=0&&rx>=0) break; }
+        if (lx>=0&&rx>=0) { const t=(x-lx)/(rx-lx), li=(y*TEX_SZ+lx)*3, ri=(y*TEX_SZ+rx)*3; for(let c=0;c<3;c++) texImg[id*3+c]=Math.round((1-t)*texImg[li+c]+t*texImg[ri+c]); }
+        else if (lx>=0) { const li=(y*TEX_SZ+lx)*3; texImg[id*3]=texImg[li]; texImg[id*3+1]=texImg[li+1]; texImg[id*3+2]=texImg[li+2]; }
+        else if (rx>=0) { const ri=(y*TEX_SZ+rx)*3; texImg[id*3]=texImg[ri]; texImg[id*3+1]=texImg[ri+1]; texImg[id*3+2]=texImg[ri+2]; }
+      }
+    }
+    texImg = despeckleUvOutliers(texImg, texCov, 80); texImg = despeckleUvOutliers(texImg, texCov, 80);
+    part.tex = dilateUvGutter(texImg, texCov, 8);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6. Rigging, Morphs & VRM 1.0 / 0.x Export
+// ---------------------------------------------------------------------------
+function skinPart(pname, part, boneInfo, params) {
+  const { H, isTpose, czLegs } = params, { shX, shoulderY, neckY, chestY, spineY, hipsY, armLen, dirL, dirR, shL, shR } = boneInfo;
+  const v = Float32Array.from(part.verts), Nv = v.length/3, nb = BONES.length, W = new Float32Array(Nv * nb);
+  for (let i=0; i<Nv; i++) {
+    const wx=v[i*3], wy=v[i*3+1], wz=v[i*3+2], yn=wy/H, row=i*nb;
+    if (pname==="head") {
+      const thn=clip((wy-(neckY-0.025))/0.045,0,1), ttop=clip((wy-neckY)/0.035,0,1);
+      W[row+BONE_IDX.chest]=1-thn; W[row+BONE_IDX.neck]=thn*(1-ttop); W[row+BONE_IDX.head]=ttop;
+    } else if (pname==="hair") {
+      const tl=clip((neckY-0.02-wy)/0.14,0,1); W[row+BONE_IDX.head]=1-0.35*tl; W[row+BONE_IDX.neck]=0.2*tl; W[row+BONE_IDX.chest]=0.15*tl;
+    } else if (pname==="torso") {
+      if (yn>=0.49) {
+        const wN=clip((wy-(neckY-0.02))/0.04,0,1), wC=clip((wy-spineY)/Math.max(0.05,chestY-spineY),0,1)*(1-wN), wS=clip((wy-hipsY)/Math.max(0.05,spineY-hipsY),0,1)*(1-wC-wN), wH=Math.max(0,1-wC-wS-wN);
+        const sz=clip((wy-(shoulderY-0.05))/0.05,0,1), sl=0.25*sz*clip((wx-shX*0.72)/0.06,0,1), sr=0.25*sz*clip((-wx-shX*0.72)/0.06,0,1);
+        W[row+BONE_IDX.neck]=wN; W[row+BONE_IDX.chest]=wC*(1-sl-sr); W[row+BONE_IDX.leftShoulder]=wC*sl; W[row+BONE_IDX.rightShoulder]=wC*sr; W[row+BONE_IDX.spine]=wS; W[row+BONE_IDX.hips]=wH;
+      } else {
+        const th=clip((0.49-yn)/0.18,0,1), lf=clip((wx+0.04)/0.08,0,1); W[row+BONE_IDX.hips]=1-0.45*th; W[row+BONE_IDX.leftUpperLeg]=0.45*th*lf; W[row+BONE_IDX.rightUpperLeg]=0.45*th*(1-lf);
+      }
+    } else {
+      const tag = part.partTag[i], isHL=tag===1, isHR=tag===2, isPel=tag===4;
+      if (isPel) { W[row+BONE_IDX.hips]=1.0; continue; }
+      const sL=(wx-shL[0])*dirL[0]+(wy-shL[1])*dirL[1], dpL=Math.abs((wx-shL[0])*(-dirL[1])+(wy-shL[1])*dirL[0]);
+      const sR=(wx-shR[0])*dirR[0]+(wy-shR[1])*dirR[1], dpR=Math.abs((wx-shR[0])*(-dirR[1])+(wy-shR[1])*dirR[0]);
+      const isLeft = isHL || (isTpose ? (wx>shX-0.04&&Math.abs(wy-shoulderY)<0.09&&sL>-0.04) : (wx>shX-0.03&&sL>-0.04&&dpL<0.085&&wy<=shoulderY+0.08));
+      const isRight = isHR || (isTpose ? (wx<-(shX-0.04)&&Math.abs(wy-shoulderY)<0.09&&sR>-0.04) : (wx<-(shX-0.03)&&sR>-0.04&&dpR<0.085&&wy<=shoulderY+0.08));
+      if (isLeft||isRight) {
+        const sl=(isLeft?sL:sR)/Math.max(armLen,0.1), hs=(params.wristX-shX)/Math.max(armLen,0.1);
+        const wCl=clip((sl+0.06)/0.06,0,1), wSh=clip((sl+0.02)/0.16,0,1), wEl=clip((sl-0.42)/0.12,0,1), wWr=(isLeft?isHL:isHR)?1:clip((sl-(hs-0.04))/0.04,0,1);
+        W[row+BONE_IDX.chest]=1-wCl; W[row+BONE_IDX[isLeft?"leftShoulder":"rightShoulder"]]=wCl*(1-wSh); W[row+BONE_IDX[isLeft?"leftUpperArm":"rightUpperArm"]]=wSh*(1-wEl); W[row+BONE_IDX[isLeft?"leftLowerArm":"rightLowerArm"]]=wEl*(1-wWr); W[row+BONE_IDX[isLeft?"leftHand":"rightHand"]]=wWr;
+      } else {
+        const lf=clip((wx+0.035)/0.07,0,1), wL=clip((0.49-yn)/0.10,0,1), wK=clip((0.28-yn)/0.07,0,1), wA=clip((0.07-yn)/0.03,0,1), wT=yn<0.052?clip((wz-(czLegs+0.032))/0.045,0,1):0;
+        W[row+BONE_IDX.hips]=1-wL; W[row+BONE_IDX.leftUpperLeg]=wL*(1-wK)*lf; W[row+BONE_IDX.rightUpperLeg]=wL*(1-wK)*(1-lf);
+        W[row+BONE_IDX.leftLowerLeg]=wK*(1-wA)*lf; W[row+BONE_IDX.rightLowerLeg]=wK*(1-wA)*(1-lf); W[row+BONE_IDX.leftFoot]=wA*(1-wT)*lf; W[row+BONE_IDX.rightFoot]=wA*(1-wT)*(1-lf); W[row+BONE_IDX.leftToes]=wA*wT*lf; W[row+BONE_IDX.rightToes]=wA*wT*(1-lf);
+      }
+    }
+  }
+  const joints = new Uint16Array(Nv*4), weights = new Float32Array(Nv*4);
+  for (let i=0; i<Nv; i++) {
+    const row=i*nb; let sumA=0; for (let b=0;b<nb;b++) sumA+=W[row+b]; sumA=Math.max(sumA,1e-6);
+    const pairs=[]; for (let b=0;b<nb;b++) pairs.push([b, W[row+b]/sumA]); pairs.sort((a,b)=>b[1]-a[1]);
+    const w64=new Float64Array(4), j4=new Uint16Array(4); let wSum=0;
+    for (let m=0;m<4;m++){ const val=pairs[m][1]>1e-5?pairs[m][1]:0; w64[m]=val; j4[m]=pairs[m][0]; wSum+=val; }
+    wSum=Math.max(wSum,1e-12); let fSum=0; for (let m=0;m<4;m++){weights[i*4+m]=w64[m]/wSum; fSum+=weights[i*4+m];}
+    weights[i*4]+=1-fSum; for (let m=0;m<4;m++) joints[i*4+m]=weights[i*4+m]>0?j4[m]:0;
+  }
+  const vTp = Float32Array.from(v);
+  if (pname==="body" && !isTpose && (params.alphaL>1e-4||params.alphaR>1e-4)) {
+    for (let i=0; i<Nv; i++) {
+      const r=i*nb, wL=W[r+BONE_IDX.leftUpperArm]+W[r+BONE_IDX.leftLowerArm]+W[r+BONE_IDX.leftHand], wR=W[r+BONE_IDX.rightUpperArm]+W[r+BONE_IDX.rightLowerArm]+W[r+BONE_IDX.rightHand];
+      if (wL+wR<=1e-5) continue; const th=wL*params.alphaL-wR*params.alphaR, pv=wL>=wR?shL:shR, c=Math.cos(th), s=Math.sin(th), dx=v[i*3]-pv[0], dy=v[i*3+1]-pv[1];
+      vTp[i*3]=pv[0]+c*dx-s*dy; vTp[i*3+1]=pv[1]+s*dx+c*dy;
+    }
+  }
+  return { verts: vTp, normals: computeVertexNormals(vTp, part.tris), uv: part.uv, tris: part.tris, joints, weights, tex: part.tex };
+}
+
+function buildFacialMorphTargets(verts, params) {
+  const Nv = verts.length / 3, { yChin, headH, hcz } = params, ym = yChin+0.22*headH, yj = yChin+0.12*headH, ye = yChin+0.48*headH, yb = yChin+0.60*headH;
+  const morphs = Object.fromEntries(EXPR_NAMES.map((e) => [e, new Float32Array(Nv * 3)]));
+  for (let i=0; i<Nv; i++) {
+    const vx=verts[i*3], vy=verts[i*3+1], vz=verts[i*3+2];
+    const fm = clip((vz-(hcz+0.02))/0.035,0,1)*Math.exp(-((vx/0.055)**4))*clip((vy-(yChin-0.005))/0.025,0,1); if (fm<=1e-6) continue;
+    const g = (cx,cy,sx,sy)=>Math.exp(-(((vx-cx)/sx)**2+((vy-cy)/sy)**2))*fm;
+    const gM=g(0,ym,0.024,0.016), gLl=g(0,ym-0.008,0.022,0.018), gUl=g(0,ym+0.006,0.020,0.010), gJ=g(0,yj,0.032,0.024);
+    const gC=g(0.018,ym,0.014,0.012)+g(-0.018,ym,0.014,0.012), gCh=g(0.028,ym+0.022,0.022,0.018)+g(-0.028,ym+0.022,0.022,0.018);
+    const gElu=g(0.028,ye+0.007,0.016,0.011), gEld=g(0.028,ye-0.007,0.016,0.010), gEru=g(-0.028,ye+0.007,0.016,0.011), gErd=g(-0.028,ye-0.007,0.016,0.010);
+    const gBr=g(0.026,yb,0.018,0.012)+g(-0.026,yb,0.018,0.012), sgx=Math.sign(vx);
+    const sM=(n,dx,dy,dz)=>{morphs[n][i*3]=dx;morphs[n][i*3+1]=dy;morphs[n][i*3+2]=dz;};
+    sM("aa",-0.002*sgx*gM,-0.01*gLl-0.007*gJ+0.003*gUl,-0.003*gJ); sM("ih",0.007*sgx*gC,-0.003*gLl+0.002*gUl,0); sM("ou",-0.006*sgx*gC,-0.005*gLl,0.008*gM);
+    sM("ee",0.006*sgx*gC,-0.005*gLl+0.002*gUl,0); sM("oh",-0.004*sgx*gC,-0.008*gLl-0.004*gJ,0.006*gM);
+    sM("blinkLeft",0,-0.0075*gElu+0.0025*gEld,0.0015*gElu); sM("blinkRight",0,-0.0075*gEru+0.0025*gErd,0.0015*gEru); sM("blink",0,-0.0075*(gElu+gEru)+0.0025*(gEld+gErd),0.0015*(gElu+gEru));
+    sM("happy",0.005*sgx*gC,0.006*gC+0.004*gCh-0.004*(gElu+gEru)+0.003*(gEld+gErd),0.003*gCh); sM("angry",-0.003*sgx*gBr,-0.006*gBr-0.003*gC,0.002*gBr);
+    sM("sad",0.002*sgx*gBr,0.004*g(0,yb,0.022,0.012)-0.005*gC,0); sM("relaxed",0.003*sgx*gC,0.003*gC-0.003*(gElu+gEru),0); sM("surprised",0,0.007*gBr+0.003*(gElu+gEru)-0.007*gLl,0.002*gBr);
+  }
+  return morphs;
+}
+
+function rigAvatar(parts, params) {
+  const { H, shX, shoulderY, czArm, alphaL, alphaR, czTorso, hcz, czLegs } = params;
+  const neckY = params.yClavicle + 0.35 * (params.yChin - params.yClavicle), armSpan = params.armTipX - shX;
+  const boneInfo = { shX, shoulderY, neckY, chestY: 0.69*H, spineY: 0.59*H, hipsY: 0.50*H, armLen: armSpan, dirL: [Math.cos(alphaL), -Math.sin(alphaL), 0], dirR: [-Math.cos(alphaR), -Math.sin(alphaR), 0], shL: [shX, shoulderY, czArm], shR: [-shX, shoulderY, czArm] };
+  const legX = params.legCxL[4], eyeY = params.yChin + 0.48*params.headH, headY = params.yChin + 0.30*params.headH, elbowX = shX + 0.48*(params.wristX - shX), handX = params.wristX;
+  const bonePos = {
+    hips: [0,0.50*H,czTorso], spine: [0,0.59*H,czTorso], chest: [0,0.69*H,czTorso], neck: [0,neckY,params.czNeck], head: [0,headY,hcz],
+    leftEye: [0.028,eyeY,hcz+params.rzHead*0.85], rightEye: [-0.028,eyeY,hcz+params.rzHead*0.85],
+    leftShoulder: [shX*0.45,shoulderY-0.008,czArm], leftUpperArm: [shX,shoulderY,czArm], leftLowerArm: [elbowX,shoulderY,czArm], leftHand: [handX,shoulderY,czArm],
+    rightShoulder: [-shX*0.45,shoulderY-0.008,czArm], rightUpperArm: [-shX,shoulderY,czArm], rightLowerArm: [-elbowX,shoulderY,czArm], rightHand: [-handX,shoulderY,czArm],
+    leftUpperLeg: [legX,0.46*H,czLegs], leftLowerLeg: [legX,0.25*H,czLegs], leftFoot: [legX,0.055*H,czLegs+0.008], leftToes: [legX,0.014*H,czLegs+0.075],
+    rightUpperLeg: [-legX,0.46*H,czLegs], rightLowerLeg: [-legX,0.25*H,czLegs], rightFoot: [-legX,0.055*H,czLegs+0.008], rightToes: [-legX,0.014*H,czLegs+0.075],
+  };
+  const rigged = {}; for (const pn of ["body", "head", "torso", "hair"]) if (parts[pn] && parts[pn].tris.length) rigged[pn] = skinPart(pn, parts[pn], boneInfo, params);
+  rigged.head.morphs = buildFacialMorphTargets(rigged.head.verts, params);
+  return { rigged, bonePos };
+}
+
+function buildVrmBytes(rigged, bonePos, thumbRgb, version = "1.0", shaderMode = "mtoon", name = "Video2VRM", author = "Unknown") {
+  const bp = {}; for (const k of BONES) { const p = bonePos[k]; bp[k] = version === "0.x" ? [-p[0], p[1], -p[2]] : [p[0], p[1], p[2]]; }
+  const active = ["body", "head", "torso", "hair"].filter((p) => rigged[p]), binChunks = [], views = [], accs = []; let binLen = 0;
+  function addView(u8, target = null) {
+    const pad = (4 - (binLen % 4)) % 4; if (pad) { binChunks.push(new Uint8Array(pad)); binLen += pad; }
+    const v = { buffer: 0, byteOffset: binLen, byteLength: u8.byteLength }; if (target) v.target = target;
+    binChunks.push(u8); binLen += u8.byteLength; views.push(v); return views.length - 1;
+  }
+  function addAcc(typed, ctype, typ, target = null, minmax = false) {
+    const u8 = new Uint8Array(typed.buffer, typed.byteOffset, typed.byteLength);
+    const comp = typ==="VEC3"?3:(typ==="VEC2"?2:(typ==="VEC4"?4:(typ==="MAT4"?16:1))), count = Math.floor(typed.length / comp);
+    const a = { bufferView: addView(u8, target), componentType: ctype, count, type: typ };
+    if (minmax) {
+      const mn = Array(comp).fill(Infinity), mx = Array(comp).fill(-Infinity);
+      for (let i=0; i<count; i++) for (let c=0; c<comp; c++) { const val=typed[i*comp+c]; if(val<mn[c]) mn[c]=val; if(val>mx[c]) mx[c]=val; }
+      a.min = mn; a.max = mx;
+    }
+    accs.push(a); return accs.length - 1;
+  }
+  const meshesGltf = [];
+  for (let mi = 0; mi < active.length; mi++) {
+    const pn = active[mi], part = rigged[pn], P = Float32Array.from(part.verts), N = Float32Array.from(part.normals);
+    if (version === "0.x") for (let i=0; i<P.length; i+=3) { P[i]*=-1; P[i+2]*=-1; N[i]*=-1; N[i+2]*=-1; }
+    const aPos=addAcc(P,5126,"VEC3",34962,true), aNrm=addAcc(N,5126,"VEC3",34962,false), aUv=addAcc(part.uv,5126,"VEC2",34962,false), aJ=addAcc(part.joints,5123,"VEC4",34962,false), aW=addAcc(part.weights,5126,"VEC4",34962,false);
+    let maxIdx=0; for (let i=0; i<part.tris.length; i++) if (part.tris[i]>maxIdx) maxIdx=part.tris[i];
+    const big = maxIdx >= 65535, aIdx = addAcc(big ? Uint32Array.from(part.tris) : Uint16Array.from(part.tris), big ? 5125 : 5123, "SCALAR", 34963, false);
+    const prim = { attributes: { POSITION:aPos, NORMAL:aNrm, TEXCOORD_0:aUv, JOINTS_0:aJ, WEIGHTS_0:aW }, indices:aIdx, material:mi, mode:4 };
+    const mobj = { name: pn[0].toUpperCase() + pn.slice(1), primitives: [prim] };
+    if (pn === "head") {
+      prim.targets = []; for (const en of EXPR_NAMES) { const d=Float32Array.from(part.morphs[en]); if (version==="0.x") for(let i=0;i<d.length;i+=3){d[i]*=-1;d[i+2]*=-1;} prim.targets.push({ POSITION: addAcc(d, 5126, "VEC3", 34962, true) }); }
+      prim.extras = { targetNames: [...EXPR_NAMES] }; mobj.weights = Array(EXPR_NAMES.length).fill(0); mobj.extras = { targetNames: [...EXPR_NAMES] };
+    }
+    meshesGltf.push(mobj);
+  }
+  const boneOff = 1, nodes = [{ name: "Root", children: [boneOff + BONE_IDX.hips] }];
+  for (const bn of BONES) { const p=bp[bn], par=PARENT[bn]?bp[PARENT[bn]]:[0,0,0]; nodes.push({ name:bn, translation:[p[0]-par[0],p[1]-par[1],p[2]-par[2]] }); }
+  for (const bn of BONES) { const kids=BONES.filter((c)=>PARENT[c]===bn).map((c)=>boneOff+BONE_IDX[c]); if (kids.length) nodes[boneOff+BONE_IDX[bn]].children=kids; }
+  const ibm = new Float32Array(BONES.length * 16);
+  for (let k=0; k<BONES.length; k++) { const p=bp[BONES[k]], o=k*16; ibm[o]=1; ibm[o+5]=1; ibm[o+10]=1; ibm[o+15]=1; ibm[o+12]=-p[0]; ibm[o+13]=-p[1]; ibm[o+14]=-p[2]; }
+  const aIbm = addAcc(ibm, 5126, "MAT4"), partNodes = {};
+  for (let mi=0; mi<active.length; mi++) { partNodes[active[mi]] = nodes.length; nodes.push({ name: active[mi][0].toUpperCase()+active[mi].slice(1), mesh: mi, skin: 0 }); }
+  const headMeshIdx = active.indexOf("head"), headNodeIdx = partNodes.head, imagesGltf = [], texturesGltf = [];
+  for (let mi=0; mi<active.length; mi++) { imagesGltf.push({ name:`${active[mi]}_albedo`, bufferView:addView(encodeRgbToPngBytes(rigged[active[mi]].tex, TEX_SZ, TEX_SZ)), mimeType:"image/png" }); texturesGltf.push({ source:mi, sampler:0 }); }
+  const thumbIdx = active.length; imagesGltf.push({ name:"thumbnail", bufferView:addView(encodeRgbToPngBytes(thumbRgb||new Uint8Array(256*256*3).fill(64),256,256)), mimeType:"image/png" }); texturesGltf.push({ source:thumbIdx, sampler:1 });
+  const endPad = (4 - (binLen % 4)) % 4; if (endPad) { binChunks.push(new Uint8Array(endPad)); binLen += endPad; }
+  const useMtoon = shaderMode === "mtoon", extUsed = [version === "1.0" && useMtoon ? "VRMC_materials_mtoon" : "KHR_materials_unlit"];
+  const materials = active.map((pn, mi) => {
+    const m = { name:`${pn}_mat`, pbrMetallicRoughness:{ baseColorTexture:{index:mi}, baseColorFactor:[1,1,1,1], metallicFactor:0, roughnessFactor:useMtoon?0.9:1.0 }, emissiveFactor:[0,0,0], alphaMode:"OPAQUE", doubleSided:false, extensions:{} };
+    if (version==="1.0" && useMtoon) m.extensions.VRMC_materials_mtoon = { specVersion:"1.0", transparentWithZWrite:false, renderQueueOffsetNumber:0, shadeColorFactor:[0.85,0.82,0.87], shadeMultiplyTexture:{index:mi}, shadingShiftFactor:-0.15, shadingToonyFactor:0.45, giEqualizationFactor:0.85, parametricRimColorFactor:[0,0,0], rimLightingMixFactor:1.0, parametricRimFresnelPowerFactor:5.0, parametricRimLiftFactor:0.0, outlineWidthMode:"none", outlineColorFactor:[0,0,0], outlineLightingMixFactor:1.0, uvAnimationScrollXSpeedFactor:0.0, uvAnimationScrollYSpeedFactor:0.0, uvAnimationRotationSpeedFactor:0.0 };
+    else m.extensions.KHR_materials_unlit = {};
+    return m;
+  });
+  const j = { asset:{version:"2.0", generator:"Video2VRM Studio (Zero-ML Polar-Loft Hybrid)"}, scene:0, scenes:[{nodes:[0,...active.map((pn)=>partNodes[pn])]}], nodes, meshes:meshesGltf, skins:[{joints:BONES.map((_,k)=>boneOff+k), inverseBindMatrices:aIbm, skeleton:boneOff}], materials, textures:texturesGltf, samplers:[{magFilter:9729,minFilter:9987,wrapS:33071,wrapT:33071},{magFilter:9729,minFilter:9729}], images:imagesGltf, accessors:accs, bufferViews:views, buffers:[{byteLength:binLen}], extensionsUsed:extUsed };
+  const headBone = boneOff + BONE_IDX.head;
+  if (version === "0.x") {
+    j.extensionsUsed.push("VRM"); const bs = [{ name:"Neutral", presetName:"neutral", binds:[], materialValues:[], isBinary:false }];
+    EXPR_NAMES.forEach((en,ti)=>bs.push({name:en[0].toUpperCase()+en.slice(1), presetName:VRM0_EXPR_MAP[en], binds:[{mesh:headMeshIdx,index:ti,weight:100}], materialValues:[], isBinary:false}));
+    j.extensions = { VRM:{ exporterVersion:"Video2VRM Studio", specVersion:"0.0", meta:{title:name,version:"1.0",author,contactInformation:"",reference:"",texture:thumbIdx,allowedUserName:"Everyone",violentUssageName:"Disallow",sexualUssageName:"Disallow",commercialUssageName:"Disallow",otherPermissionUrl:"",licenseName:"CC_BY_NC",otherLicenseUrl:""}, humanoid:{humanBones:BONES.map((bn,k)=>({bone:bn,node:boneOff+k,useDefaultValues:true})),armStretch:0.05,legStretch:0.05,upperArmTwist:0.5,lowerArmTwist:0.5,upperLegTwist:0.5,lowerLegTwist:0.5,feetSpacing:0,hasTranslationDoF:false}, firstPerson:{firstPersonBone:headBone,firstPersonBoneOffset:{x:0,y:0.06,z:0},meshAnnotations:active.map((pn,mi)=>({mesh:mi,firstPersonFlag:(pn==="head"||pn==="hair")?"ThirdPersonOnly":"Both"})),lookAtTypeName:"Bone",lookAtHorizontalInner:{curve:[0,0,0,1,1,1,1,0],xRange:90,yRange:10},lookAtHorizontalOuter:{curve:[0,0,0,1,1,1,1,0],xRange:90,yRange:10},lookAtVerticalDown:{curve:[0,0,0,1,1,1,1,0],xRange:90,yRange:10},lookAtVerticalUp:{curve:[0,0,0,1,1,1,1,0],xRange:90,yRange:10}}, blendShapeMaster:{blendShapeGroups:bs}, secondaryAnimation:{boneGroups:[],colliderGroups:[]}, materialProperties:active.map((pn,mi)=>({name:`${pn}_mat`,shader:useMtoon?"VRM/MToon":"VRM/UnlitTexture",renderQueue:2000,floatProperties:useMtoon?{_Cutoff:0.5,_BlendMode:0,_CullMode:2,_ZWrite:1,_SrcBlend:1,_DstBlend:0,_ReceiveShadowRate:1,_ShadingGradeRate:1,_ShadeShift:-0.15,_ShadeToony:0.45,_IndirectLightIntensity:0.85,_RimLightingMix:0,_RimFresnelPower:5,_RimLift:0,_OutlineWidthMode:0,_OutlineWidth:0,_OutlineLightingMix:1,_MToonVersion:38}:{_BlendMode:0,_Cutoff:0.5},vectorProperties:useMtoon?{_Color:[1,1,1,1],_ShadeColor:[0.85,0.82,0.87,1],_MainTex:[0,0,1,1],_EmissionColor:[0,0,0,1],_RimColor:[0,0,0,1],_OutlineColor:[0,0,0,1]}:{_Color:[1,1,1,1],_MainTex:[0,0,1,1]},textureProperties:useMtoon?{_MainTex:mi,_ShadeTexture:mi}:{_MainTex:mi},keywordMap:{},tagMap:{RenderType:"Opaque"}})) } };
+  } else {
+    j.extensionsUsed.push("VRMC_vrm"); const preset = { neutral:{isBinary:false,overrideBlink:"none",overrideLookAt:"none",overrideMouth:"none"} };
+    EXPR_NAMES.forEach((en,ti)=>{preset[en]={morphTargetBinds:[{node:headNodeIdx,index:ti,weight:1}],isBinary:false,overrideBlink:"none",overrideLookAt:"none",overrideMouth:"none"};});
+    const cd = { inputMaxValue: 90.0, outputScale: 10.0 };
+    j.extensions = { VRMC_vrm:{ specVersion:"1.0", meta:{name,version:"1.0",authors:[author],licenseUrl:"https://vrm.dev/licenses/1.0/",thumbnailImage:thumbIdx,avatarPermission:"everyone",commercialUsage:"personalNonProfit",creditNotation:"required",allowRedistribution:true,modification:"allowModification",allowExcessivelyViolentUsage:false,allowExcessivelySexualUsage:false,allowPoliticalOrReligiousUsage:false,allowAntisocialOrHateUsage:false}, humanoid:{humanBones:Object.fromEntries(BONES.map((bn,k)=>[bn,{node:boneOff+k}]))}, firstPerson:{meshAnnotations:active.map((pn)=>({node:partNodes[pn],type:(pn==="head"||pn==="hair")?"thirdPersonOnly":"both"}))}, lookAt:{type:"bone",offsetFromHeadBone:[0,0.06,0],rangeMapHorizontalInner:cd,rangeMapHorizontalOuter:cd,rangeMapVerticalDown:cd,rangeMapVerticalUp:cd}, expressions:{preset} } };
+  }
+  const enc = new TextEncoder().encode(JSON.stringify(j)), jPad = (4-(enc.byteLength%4))%4, jsLen = enc.byteLength + jPad, total = 12 + 8 + jsLen + 8 + binLen;
+  const glb = new Uint8Array(total), dv = new DataView(glb.buffer);
+  dv.setUint32(0,0x46546C67,true); dv.setUint32(4,2,true); dv.setUint32(8,total,true); dv.setUint32(12,jsLen,true); dv.setUint32(16,0x4E4F534A,true);
+  glb.set(enc, 20); for (let i=0; i<jPad; i++) glb[20+enc.byteLength+i] = 0x20;
+  const bHdr = 20 + jsLen; dv.setUint32(bHdr, binLen, true); dv.setUint32(bHdr+4, 0x004E4942, true);
+  let bo = bHdr + 8; for (const ch of binChunks) { glb.set(ch, bo); bo += ch.byteLength; }
+  return glb;
+}
+
+// ---------------------------------------------------------------------------
+// 7. WebGL2 Skinned Renderer & Interactive UI
+// ---------------------------------------------------------------------------
+let state = {
+  rigged: null, bonePos: null, params: null, thumbRgb: null, poseMode: "tpose", playing: true, tClock: 0,
+  exprWeights: Object.fromEntries(EXPR_NAMES.map((e) => [e, 0])), vis: { body: true, head: true, torso: true, hair: true },
+  cam: { yaw: 0.35, pitch: 0.08, dist: 2.35, tx: 0, ty: 0.80, tz: 0 },
+};
+function eulerToQuat(rx, ry, rz) {
+  const cx=Math.cos(rx*0.5), sx=Math.sin(rx*0.5), cy=Math.cos(ry*0.5), sy=Math.sin(ry*0.5), cz=Math.cos(rz*0.5), sz=Math.sin(rz*0.5);
+  return [sx*cy*cz-cx*sy*sz, cx*sy*cz+sx*cy*sz, cx*cy*sz-sx*sy*cz, cx*cy*cz+sx*sy*sz];
+}
+function quatToMat4(q, tx, ty, tz) {
+  const [x,y,z,w]=q, x2=x+x, y2=y+y, z2=z+z, xx=x*x2, xy=x*y2, xz=x*z2, yy=y*y2, yz=y*z2, zz=z*z2, wx=w*x2, wy=w*y2, wz=w*z2;
+  return new Float32Array([1-(yy+zz),xy+wz,xz-wy,0, xy-wz,1-(xx+zz),yz+wx,0, xz+wy,yz-wx,1-(xx+yy),0, tx,ty,tz,1]);
+}
+function mulMat4(a, b) {
+  const o = new Float32Array(16); for (let c=0;c<4;c++) for (let r=0;r<4;r++) o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3]; return o;
+}
+function computeSkinMatrices(poseName, t) {
+  const bp = state.bonePos; if (!bp) return null;
+  const rot = {}, setR = (bn, rx, ry, rz) => { rot[bn] = [rx, ry, rz]; };
+  if (poseName === "idle") {
+    const br = 0.025*Math.sin(t*2.1); setR("hips",0,0.14,0); setR("spine",br,0,0); setR("chest",br,-0.05,0); setR("head",0.04*Math.sin(t*1.1),-0.08,0);
+    setR("leftUpperArm",0.06,0.08,-1.16); setR("rightUpperArm",0.06,-0.08,1.16); setR("leftLowerArm",0.1,0.25,-0.06); setR("rightLowerArm",0.1,-0.25,0.06);
+  } else if (poseName === "wave") {
+    setR("hips",0,-0.1,0); setR("chest",0.02,0.1,0); setR("leftUpperArm",-0.15,0,1.05+0.18*Math.sin(t*4.5)); setR("leftLowerArm",0.1,0,0.72+0.32*Math.sin(t*4.5));
+    setR("rightUpperArm",0.06,-0.1,1.15); setR("rightLowerArm",0.12,0.2,0.25); setR("head",0,-0.08,0.05*Math.sin(t*2.2));
+  } else if (poseName === "vrma") {
+    const ph = (t%5)/5; setR("spine",0.04*Math.sin(ph*2*Math.PI),0,0); setR("head",0.06*Math.sin(ph*4*Math.PI),0.16*Math.sin(ph*2*Math.PI),0.05*Math.cos(ph*2*Math.PI));
+    setR("leftUpperArm",0.05,0.12,-1.12+0.12*Math.sin(ph*2*Math.PI)); setR("rightUpperArm",0.05,-0.12,1.12-0.12*Math.sin(ph*2*Math.PI)); setR("leftLowerArm",0.18,0.3,-0.12); setR("rightLowerArm",0.18,-0.3,0.12);
+  }
+  const world = {}, skinOut = new Float32Array(BONES.length * 16);
+  for (let k=0; k<BONES.length; k++) {
+    const bn=BONES[k], p=bp[bn], par=PARENT[bn], parP=par?bp[par]:[0,0,0], [rx,ry,rz]=rot[bn]||[0,0,0];
+    const loc = quatToMat4(eulerToQuat(rx,ry,rz), p[0]-parP[0], p[1]-parP[1], p[2]-parP[2]);
+    world[bn] = par ? mulMat4(world[par], loc) : loc;
+    skinOut.set(mulMat4(world[bn], new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,-p[0],-p[1],-p[2],1])), k*16);
+  }
+  return skinOut;
+}
+
+let gl = null, prog = null, glMeshes = {}, gridBuf = null, gridProg = null;
+function initGL() {
+  const cvs = $("glCanvas"); if (!cvs) return;
+  gl = cvs.getContext("webgl2", { antialias: true }); if (!gl) return;
+  const compile = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); return sh; };
+  prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, `#version 300 es
+    layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec2 aUv;
+    layout(location=3) in uvec4 aJ; layout(location=4) in vec4 aW;
+    uniform mat4 uViewProj; uniform mat4 uBones[${BONES.length}]; out vec3 vNrm; out vec2 vUv;
+    void main(){ mat4 sk = aW.x*uBones[aJ.x]+aW.y*uBones[aJ.y]+aW.z*uBones[aJ.z]+aW.w*uBones[aJ.w]; vNrm=normalize(mat3(sk)*aNrm); vUv=aUv; gl_Position=uViewProj*(sk*vec4(aPos,1.0)); }`));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, `#version 300 es
+    precision highp float; in vec3 vNrm; in vec2 vUv; uniform sampler2D uTex; uniform float uUnlit; out vec4 oCol;
+    void main(){ vec3 c=texture(uTex,vUv).rgb; if(uUnlit>0.5){oCol=vec4(c,1.0);return;}
+      float toon=smoothstep(-0.22,0.25,dot(normalize(vNrm),normalize(vec3(0.42,0.72,0.65))));
+      oCol=vec4(mix(c*vec3(0.84,0.81,0.88),c*1.03,toon),1.0); }`));
+  gl.linkProgram(prog);
+  gridProg = gl.createProgram();
+  gl.attachShader(gridProg, compile(gl.VERTEX_SHADER, `#version 300 es\nlayout(location=0) in vec3 p; uniform mat4 uVP; void main(){ gl_Position=uVP*vec4(p,1.0); }`));
+  gl.attachShader(gridProg, compile(gl.FRAGMENT_SHADER, `#version 300 es\nprecision highp float; out vec4 c; void main(){ c=vec4(0.22,0.28,0.42,0.65); }`));
+  gl.linkProgram(gridProg);
+  const lines = []; for (let i=-8; i<=8; i++) { const d=i*0.25; lines.push(d,0,-2, d,0,2, -2,0,d, 2,0,d); }
+  const vao = gl.createVertexArray(), buf = gl.createBuffer(); gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gridBuf = { vao, count: lines.length / 3 };
+}
+function uploadRiggedMeshes() {
+  if (!gl || !state.rigged) return;
+  for (const pn of Object.keys(glMeshes)) { gl.deleteVertexArray(glMeshes[pn].vao); gl.deleteTexture(glMeshes[pn].tex); }
+  glMeshes = {};
+  for (const pn of Object.keys(state.rigged)) {
+    const part = state.rigged[pn], vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const addB = (loc, data, sz, tp, isI = false) => {
+      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(loc); if (isI) gl.vertexAttribIPointer(loc, sz, tp, 0, 0); else gl.vertexAttribPointer(loc, sz, tp, false, 0, 0);
+    };
+    const posBuf = Float32Array.from(part.verts); addB(0, posBuf, 3, gl.FLOAT); addB(1, part.normals, 3, gl.FLOAT); addB(2, part.uv, 2, gl.FLOAT);
+    addB(3, part.joints, 4, gl.UNSIGNED_SHORT, true); addB(4, part.weights, 4, gl.FLOAT);
+    const ib = gl.createBuffer(), idx32 = Uint32Array.from(part.tris); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx32, gl.STATIC_DRAW);
+    const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, TEX_SZ, TEX_SZ, 0, gl.RGB, gl.UNSIGNED_BYTE, part.tex);
+    gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    glMeshes[pn] = { vao, count: idx32.length, tex, posBuf };
+  }
+}
+function updateHeadMorphsGL() {
+  if (!gl || !glMeshes.head || !state.rigged?.head) return;
+  const h = state.rigged.head, buf = glMeshes.head.posBuf; buf.set(h.verts);
+  for (const en of EXPR_NAMES) { const w = state.exprWeights[en]||0; if (w>1e-4 && h.morphs[en]) { const m = h.morphs[en]; for (let i=0;i<buf.length;i++) buf[i]+=w*m[i]; } }
+  gl.bindVertexArray(glMeshes.head.vao); gl.bindBuffer(gl.ARRAY_BUFFER, gl.getVertexAttrib(0, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING)); gl.bufferSubData(gl.ARRAY_BUFFER, 0, buf);
+}
+function makeViewProj(W, H) {
+  const { yaw, pitch, dist, tx, ty, tz } = state.cam;
+  const ex = tx + Math.sin(yaw)*Math.cos(pitch)*dist, ey = ty + Math.sin(pitch)*dist, ez = tz + Math.cos(yaw)*Math.cos(pitch)*dist;
+  const f = [tx-ex, ty-ey, tz-ez], fl = Math.hypot(...f); f[0]/=fl; f[1]/=fl; f[2]/=fl;
+  const r = [-f[2], 0, f[0]], rl = Math.max(1e-6, Math.hypot(...r)); r[0]/=rl; r[1]/=rl; r[2]/=rl;
+  const u = [r[1]*f[2]-r[2]*f[1], r[2]*f[0]-r[0]*f[2], r[0]*f[1]-r[1]*f[0]];
+  const view = new Float32Array([r[0],u[0],-f[0],0, r[1],u[1],-f[1],0, r[2],u[2],-f[2],0, -(r[0]*ex+r[1]*ey+r[2]*ez), -(u[0]*ex+u[1]*ey+u[2]*ez), (f[0]*ex+f[1]*ey+f[2]*ez), 1]);
+  const fov = 42*Math.PI/180, asp = W/Math.max(1,H), t = 1/Math.tan(fov*0.5), n = 0.05, far = 25;
+  return mulMat4(new Float32Array([t/asp,0,0,0, 0,t,0,0, 0,0,(far+n)/(n-far),-1, 0,0,(2*far*n)/(n-far),0]), view);
+}
+function renderLoop() {
+  requestAnimationFrame(renderLoop); if (!gl) return;
+  const cvs = $("glCanvas"), dpr = window.devicePixelRatio||1, cw = Math.floor(cvs.clientWidth*dpr), ch = Math.floor(cvs.clientHeight*dpr);
+  if (cvs.width!==cw || cvs.height!==ch) { cvs.width=cw; cvs.height=ch; }
+  gl.viewport(0,0,cw,ch); gl.clearColor(0.055,0.075,0.125,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+  const vp = makeViewProj(cw, ch);
+  if (gridProg && gridBuf) { gl.useProgram(gridProg); gl.uniformMatrix4fv(gl.getUniformLocation(gridProg,"uVP"),false,vp); gl.bindVertexArray(gridBuf.vao); gl.drawArrays(gl.LINES,0,gridBuf.count); }
+  if (state.rigged && prog) {
+    if (state.playing) state.tClock += 0.016;
+    if (state.poseMode==="vrma") {
+      const ph = (state.tClock%5)/5; state.exprWeights.blink=(ph>0.12&&ph<0.20)?Math.sin(((ph-0.12)/0.08)*Math.PI):0;
+      state.exprWeights.aa=0.45*Math.max(0,Math.sin(ph*6*Math.PI)); updateHeadMorphsGL();
+    }
+    const skMats = computeSkinMatrices(state.poseMode, state.tClock);
+    gl.useProgram(prog); gl.uniformMatrix4fv(gl.getUniformLocation(prog,"uViewProj"),false,vp); gl.uniformMatrix4fv(gl.getUniformLocation(prog,"uBones"),false,skMats);
+    gl.uniform1f(gl.getUniformLocation(prog,"uUnlit"), $("shaderSel")?.value==="unlit"?1:0);
+    for (const pn of ["body","head","torso","hair"]) { const gm=glMeshes[pn]; if(!gm||!state.vis[pn])continue; gl.bindTexture(gl.TEXTURE_2D,gm.tex); gl.bindVertexArray(gm.vao); gl.drawElements(gl.TRIANGLES,gm.count,gl.UNSIGNED_INT,0); }
+  }
+}
+
+function drawUvPreview() {
+  const cvs = $("uvCanvas"), pn = $("atlasSel")?.value; if (!cvs || !state.rigged?.[pn]) return;
+  const ctx = cvs.getContext("2d"), tmp = document.createElement("canvas"); tmp.width = TEX_SZ; tmp.height = TEX_SZ;
+  const tctx = tmp.getContext("2d"), id = tctx.createImageData(TEX_SZ, TEX_SZ), src = state.rigged[pn].tex;
+  for (let i=0,j=0; i<TEX_SZ*TEX_SZ; i++,j+=3) { id.data[i*4]=src[j]; id.data[i*4+1]=src[j+1]; id.data[i*4+2]=src[j+2]; id.data[i*4+3]=255; }
+  tctx.putImageData(id, 0, 0); ctx.clearRect(0, 0, cvs.width, cvs.height); ctx.drawImage(tmp, 0, 0, cvs.width, cvs.height);
+}
+async function extractVideoFrames720(url) {
+  let blobUrl = null;
+  const vid = $("srcVideo");
+  try {
+    let playUrl = url;
+    if (!url.startsWith("blob:")) {
+      setProg(2, "Loading video into memory...");
+      let resp;
+      try { resp = await fetch(url); }
+      catch (_) { throw new Error("Cannot fetch sample via file:// — open via http://localhost or drop an MP4 file."); }
+      if (!resp.ok) throw new Error(`Failed to fetch sample video (${resp.status})`);
+      blobUrl = URL.createObjectURL(await resp.blob());
+      playUrl = blobUrl;
+    }
+    vid.pause(); vid.removeAttribute("src"); vid.load();
+    await new Promise((res, rej) => {
+      const onErr = () => rej(new Error("Video decode error"));
+      vid.addEventListener("loadeddata", res, { once: true });
+      vid.addEventListener("error", onErr, { once: true });
+      vid.src = playUrl;
+    });
+    const dur = Math.max(0.5, vid.duration || 10.0), vw = vid.videoWidth || IMG_SZ, vh = vid.videoHeight || IMG_SZ;
+    try { await vid.play(); vid.pause(); } catch (_) {}
+    const seekTo = async (t) => {
+      if (Math.abs(vid.currentTime - t) <= 0.002) {
+        const nudge = t < dur - 0.05 ? t + 0.03 : Math.max(0, t - 0.03);
+        await new Promise((res) => { vid.addEventListener("seeked", res, { once: true }); vid.currentTime = nudge; });
+      }
+      await new Promise((res) => { vid.addEventListener("seeked", res, { once: true }); vid.currentTime = t; });
+      await new Promise((r) => requestAnimationFrame(r));
+    };
+    const cvs = document.createElement("canvas"); cvs.width = IMG_SZ; cvs.height = IMG_SZ;
+    const ctx = cvs.getContext("2d", { willReadFrequently: true });
+    const sw = Math.min(vw, vh), sx = Math.max(0, Math.floor((vw - sw) * 0.5)), sy = Math.max(0, Math.floor((vh - sw) * 0.5)), frames = [];
+    const drawSample = () => {
+      ctx.drawImage(vid, sx, sy, sw, sw, 0, 0, IMG_SZ, IMG_SZ);
+      return ctx.getImageData(0, 0, IMG_SZ, IMG_SZ).data;
+    };
+    const isAllBlack = (rgba) => {
+      let mx = 0;
+      for (let i = 0; i < rgba.length; i += 512) { const m = rgba[i] > rgba[i+1] ? (rgba[i] > rgba[i+2] ? rgba[i] : rgba[i+2]) : (rgba[i+1] > rgba[i+2] ? rgba[i+1] : rgba[i+2]); if (m > mx) mx = m; if (mx >= 4) return false; }
+      return mx < 4;
+    };
+    for (let k = 0; k < N_VIEWS; k++) {
+      const targetT = k === 0 ? Math.min(0.02, dur * 0.002) : Math.min(dur - 0.02, (k / N_VIEWS) * dur);
+      await seekTo(targetT);
+      let rgba = drawSample();
+      if (isAllBlack(rgba)) {
+        try { await vid.play(); await new Promise((r) => requestAnimationFrame(r)); vid.pause(); } catch (_) {}
+        await seekTo(Math.min(dur - 0.02, targetT + 0.04));
+        rgba = drawSample();
+      }
+      const rgb = new Uint8Array(IMG_SZ * IMG_SZ * 3);
+      for (let i = 0, j = 0; i < IMG_SZ * IMG_SZ; i++, j += 3) { rgb[j] = rgba[i*4]; rgb[j+1] = rgba[i*4+1]; rgb[j+2] = rgba[i*4+2]; }
+      frames.push(rgb); setProg(5 + ((k + 1) / N_VIEWS) * 20, `Extracting frames ${k + 1}/${N_VIEWS}...`);
+    }
+    let diffSum = 0; const f0 = frames[0], f10 = frames[Math.min(10, frames.length - 1)];
+    for (let i = 0; i < f0.length; i += 64) diffSum += Math.abs(f0[i] - f10[i]);
+    if (diffSum / (f0.length / 64) < 0.5) throw new Error("Video frame seeking stalled (identical frames). Try re-serving via HTTP or dropping the MP4.");
+    return frames;
+  } finally {
+    vid.pause(); vid.removeAttribute("src"); vid.load();
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+  }
+}
+function makeThumbRgb(f0, fg0) {
+  const cvs = document.createElement("canvas"); cvs.width=256; cvs.height=256; const ctx=cvs.getContext("2d"); ctx.fillStyle="rgb(28,34,58)"; ctx.fillRect(0,0,256,256);
+  const tmp=document.createElement("canvas"); tmp.width=IMG_SZ; tmp.height=IMG_SZ; const tctx=tmp.getContext("2d"), id=tctx.createImageData(IMG_SZ,IMG_SZ);
+  for (let i=0;i<IMG_SZ*IMG_SZ;i++){id.data[i*4]=f0[i*3];id.data[i*4+1]=f0[i*3+1];id.data[i*4+2]=f0[i*3+2];id.data[i*4+3]=fg0[i]?255:0;}
+  tctx.putImageData(id,0,0); ctx.drawImage(tmp,120,20,480,480,8,8,240,240);
+  const rgba=ctx.getImageData(0,0,256,256).data, out=new Uint8Array(256*256*3); for(let i=0;i<256*256;i++){out[i*3]=rgba[i*4];out[i*3+1]=rgba[i*4+1];out[i*3+2]=rgba[i*4+2];} return out;
+}
+function setProg(pct, msg) { const pf=$("progFill"), st=$("statusTxt"); if(pf)pf.style.width=`${clip(pct,0,100)}%`; if(st&&msg)st.textContent=msg; }
+const yieldFrame = () => new Promise((r) => setTimeout(r, 10));
+let currentVideoUrl = null, currentName = "avatar";
+
+async function runPipeline() {
+  if (!currentVideoUrl) return;
+  const btnB = $("btnBuild"); if (btnB) btnB.disabled = true; const t0 = performance.now();
+  try {
+    const frames = await extractVideoFrames720(currentVideoUrl);
+    setProg(32, "Chroma keying & edge despill..."); await yieldFrame();
+    const { fg, fgColor, cleanRgb } = chromaKeyAndDespill(frames, Number($("keyThRange")?.value || 24));
+    setProg(42, "Calibrating & detecting Chin/Clavicle/Skin..."); await yieldFrame();
+    const calib = calibrateViews(fg, $("poseModeSel")?.value || "auto");
+    const armGaps = calib.isTpose ? null : extractArmGapCurves(fg[0], calib.cxs[0], calib.ybMed, calib.pxPerM);
+    const params = fitBodyParams(fg, cleanRgb, calib, armGaps);
+    setProg(55, "Building 3D visual hull (112x164x88)..."); await yieldFrame();
+    const vol = buildVideoOccupancy(fg, calib, params);
+    setProg(68, "Polar lofting Torso + Color-Aware Hem..."); await yieldFrame();
+    const torsoPart = buildPolarLoftedTorso(vol, fg, cleanRgb, calib, params, armGaps);
+    setProg(76, "Carving Hair & Pelvis/Limbs..."); await yieldFrame();
+    const hairPart = carveColorConsistentHair(vol, torsoPart.occTorsoFit, fg, cleanRgb, calib, params);
+    const parts = { head: buildProceduralHead(params), body: buildProceduralLimbsAndHands(params), torso: torsoPart, hair: hairPart };
+    setProg(84, "Baking 1024^2 textures with vertical shoulder guard..."); await yieldFrame();
+    bakeTextures(parts, fg, fgColor, cleanRgb, calib, params);
+    setProg(95, "Skinning 23 VRM bones + 13 morphs..."); await yieldFrame();
+    const { rigged, bonePos } = rigAvatar(parts, params);
+    state.rigged = rigged; state.bonePos = bonePos; state.params = params; state.thumbRgb = makeThumbRgb(frames[0], fg[0]);
+    uploadRiggedMeshes(); drawUvPreview();
+    const triSum = Object.values(rigged).reduce((a, p) => a + p.tris.length / 3, 0);
+    const h0 = Math.min(...torsoPart.yHem), h1 = Math.max(...torsoPart.yHem), nkCm = ((params.yChin - params.yClavicle)*100).toFixed(1);
+    setProg(100, `Done in ${((performance.now()-t0)/1000).toFixed(1)}s! ${triSum.toLocaleString()} tris | neck=${nkCm}cm | hem=[${h0.toFixed(2)}..${h1.toFixed(2)}m]`);
+    const hud = $("statsHud");
+    if (hud) hud.textContent = `${calib.isTpose?"T-Pose":"A-Pose"} | ${triSum.toLocaleString()} tris | neck=${nkCm}cm | hem=[${h0.toFixed(2)}..${h1.toFixed(2)}m]`;
+    ["btnExpV1", "btnExpV0", "btnExpPng"].forEach((id) => { const el = $(id); if (el) el.disabled = false; });
+  } catch (err) { console.error(err); setProg(0, `Error: ${err.message || err}`); } finally { if (btnB) btnB.disabled = false; }
+}
+function downloadBytes(u8, fname, mime = "application/octet-stream") {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([u8], { type: mime })); a.download = fname; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function setupUI() {
+  if (typeof document === "undefined") return;
+  applyI18n(); initGL(); requestAnimationFrame(renderLoop);
+  const elExpr = $("exprList");
+  if (elExpr) for (const en of EXPR_NAMES) {
+    const row = document.createElement("div"); row.className = "expr-item";
+    const lbl = document.createElement("span"); lbl.textContent = en;
+    const inp = document.createElement("input"); inp.type = "range"; inp.min = "0"; inp.max = "1"; inp.step = "0.01"; inp.value = "0"; inp.dataset.expr = en;
+    const val = document.createElement("span"); val.textContent = "0.00";
+    inp.addEventListener("input", () => { state.exprWeights[en] = Number(inp.value); val.textContent = Number(inp.value).toFixed(2); updateHeadMorphsGL(); });
+    row.append(lbl, inp, val);
+    elExpr.appendChild(row);
+  }
+  $("langBtn")?.addEventListener("click", () => { curLang = curLang === "ja" ? "en" : "ja"; applyI18n(); });
+  $("keyThRange")?.addEventListener("input", (e) => { const v = $("keyThVal"); if (v) v.textContent = e.target.value; });
+  const selectVideo = (url, label) => { currentVideoUrl = url; currentName = label; const b = $("btnBuild"); if (b) b.disabled = false; setProg(0, `Selected: ${label} — click Generate!`); };
+  $("btnSampleUniform")?.addEventListener("click", () => selectVideo("./sample_uniform.mp4", "uniform"));
+  $("btnSampleIdol")?.addEventListener("click", () => selectVideo("./sample_idol.mp4", "idol"));
+
+  const dz = $("dropZone"), fi = $("fileInput");
+  dz?.addEventListener("click", () => fi?.click());
+  dz?.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
+  dz?.addEventListener("dragleave", () => dz.classList.remove("drag"));
+  dz?.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); const f = e.dataTransfer?.files?.[0]; if (f) selectVideo(URL.createObjectURL(f), f.name.replace(/\.[^.]+$/, "")); });
+  fi?.addEventListener("change", () => { const f = fi.files?.[0]; if (f) selectVideo(URL.createObjectURL(f), f.name.replace(/\.[^.]+$/, "")); });
+  $("btnBuild")?.addEventListener("click", runPipeline);
+  $("atlasSel")?.addEventListener("change", drawUvPreview);
+  $("btnExpV1")?.addEventListener("click", () => { if (state.rigged) downloadBytes(buildVrmBytes(state.rigged, state.bonePos, state.thumbRgb, "1.0", $("shaderSel")?.value || "mtoon", currentName, currentAuthor()), `${currentName}_v1.vrm`); });
+  $("btnExpV0")?.addEventListener("click", () => { if (state.rigged) downloadBytes(buildVrmBytes(state.rigged, state.bonePos, state.thumbRgb, "0.x", $("shaderSel")?.value || "mtoon", currentName, currentAuthor()), `${currentName}_v0.vrm`); });
+  $("btnExpPng")?.addEventListener("click", () => { const pn = $("atlasSel")?.value; if (state.rigged?.[pn]) downloadBytes(encodeRgbToPngBytes(state.rigged[pn].tex, TEX_SZ, TEX_SZ), `${currentName}_${pn}_uv.png`, "image/png"); });
+
+  document.querySelectorAll(".pose-btn").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll(".pose-btn").forEach((x) => x.classList.remove("active")); b.classList.add("active"); state.poseMode = b.dataset.pose;
+    if (state.poseMode !== "vrma") { state.exprWeights.blink = 0; state.exprWeights.aa = 0; updateHeadMorphsGL(); }
+  }));
+  $("btnPlayPause")?.addEventListener("click", (e) => { state.playing = !state.playing; e.target.textContent = I18N[curLang][state.playing ? "pauseBtn" : "playBtn"]; });
+  document.querySelectorAll("#meshChips .chip").forEach((ch) => ch.addEventListener("click", () => { ch.classList.toggle("on"); state.vis[ch.dataset.mesh] = ch.classList.contains("on"); }));
+
+  const presets = {
+    front:      { yaw: 0.0,   pitch: 0.05,  dist: 2.35, tx: 0,    ty: 0.80, tz: 0 },
+    threeq:     { yaw: 0.56,  pitch: 0.14,  dist: 2.25, tx: 0,    ty: 0.80, tz: 0 },
+    rear:       { yaw: 2.58,  pitch: 0.42,  dist: 1.35, tx: 0,    ty: 0.94, tz: 0 },
+    neck:       { yaw: 0.56,  pitch: 0.24,  dist: 0.52, tx: 0,    ty: 1.31, tz: 0.01 },
+    hand:       { yaw: 0.45,  pitch: 0.55,  dist: 0.34, tx: 0.50, ty: 1.18, tz: 0.02 },
+  };
+  document.querySelectorAll(".cam-preset").forEach((b) => b.addEventListener("click", () => Object.assign(state.cam, presets[b.dataset.cam] || presets.front)));
+  const cvs = $("glCanvas"); let drag = 0, lx = 0, ly = 0;
+  cvs?.addEventListener("mousedown", (e) => { drag = e.button === 2 ? 2 : 1; lx = e.clientX; ly = e.clientY; });
+  cvs?.addEventListener("contextmenu", (e) => e.preventDefault());
+  window.addEventListener("mouseup", () => { drag = 0; });
+  window.addEventListener("mousemove", (e) => {
+    if (!drag) return; const dx = e.clientX - lx, dy = e.clientY - ly; lx = e.clientX; ly = e.clientY;
+    if (drag === 1) { state.cam.yaw -= dx * 0.008; state.cam.pitch = clip(state.cam.pitch + dy * 0.008, -1.2, 1.4); }
+    else state.cam.ty = clip(state.cam.ty + dy * 0.002, 0.2, 1.6);
+  });
+  cvs?.addEventListener("wheel", (e) => { e.preventDefault(); state.cam.dist = clip(state.cam.dist * (1 + e.deltaY * 0.001), 0.22, 5.5); }, { passive: false });
+}
+
+if (typeof document !== "undefined") { if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setupUI); else setupUI(); }
+globalThis.Video2VRMStudio = {
+  BONES, PARENT, BONE_IDX, EXPR_NAMES, TEX_SZ, WORLD_H,
+  buildProceduralHead, buildProceduralLimbsAndHands, buildPolarLoftedTorso, buildVideoOccupancy,
+  carveColorConsistentHair, bakeTextures, rigAvatar, buildVrmBytes, fitBodyParams, calibrateViews, chromaKeyAndDespill
+};
+})();
+</script>
+</body>
+</html>
