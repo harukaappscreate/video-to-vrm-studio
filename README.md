@@ -100,6 +100,8 @@ Because this tool is **Zero-ML**, input video consistency matters. See [docs/PRO
 ## Known Limitations (Zero-ML Trade-offs)
 
 - Expects a mostly rigid character rotating 360° against a uniform **green (`#00FF00`) chroma-key background** (avoid green clothing/eyes).
+- **One full turn at a roughly constant speed.** The video must start facing the camera and turn exactly once over the whole clip. The tool finds the side and back views from the silhouette width and spreads the angles evenly between them, so a turn that speeds up, stops, or goes past 360° gives a broken shape.
+- **Tested range is narrow.** Tested only with slim anime-style figures in skirts (the two samples and one more like them). Trousers, broad or male body shapes, and long hair covering the back or shoulders have not been tested yet and may not work well. The head shape is built procedurally (only its colours come from the video), so head shapes look alike between characters.
 - Surfaces completely hidden from horizontal/shallow cameras (e.g., underside of thick ponytails, inner hollow lining) are synthesized using darkened local shading and anatomically closed base caps.
 - Heavily baggy robes spanning below the knees or overlapping crossed legs cannot be separated solely from silhouette cues.
 
